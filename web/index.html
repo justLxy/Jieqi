@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中国暗棋（揭棋）人机对战</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>中国暗棋（揭棋）人机对战</h1>
+            <div class="controls">
+                <button id="newGame" class="btn">新游戏</button>
+                <button id="undoMove" class="btn">悔棋</button>
+                <button id="switchBoard" class="btn">翻转棋盘</button>
+                <div class="ai-controls">
+                    <div class="ai-toggle">
+                        <label for="redAiToggle" class="toggle-label red">红方AI</label>
+                        <label class="switch">
+                            <input type="checkbox" id="redAiToggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="ai-toggle">
+                        <label for="blackAiToggle" class="toggle-label black">黑方AI</label>
+                        <label class="switch">
+                            <input type="checkbox" id="blackAiToggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="game-area">
+            <div class="left-panel">
+                <div class="game-info">
+                    <div class="current-player">
+                        <h3>当前行棋方: <span id="currentTurn">红方</span></h3>
+                    </div>
+                    <div class="captured-pieces">
+                        <h4>红方吃子:</h4>
+                        <div id="redCaptured" class="captured-list"></div>
+                        <h4>黑方吃子:</h4>
+                        <div id="blackCaptured" class="captured-list"></div>
+                    </div>
+                </div>
+
+                <div class="move-history">
+                    <h4>走棋历史</h4>
+                    <div id="historyList" class="history-list"></div>
+                </div>
+            </div>
+
+            <div class="board-container">
+                <div id="chessBoard" class="chess-board">
+                    <!-- 棋盘格子将通过JavaScript动态生成 -->
+                </div>
+                <div class="board-coordinates">
+                    <div class="files">
+                        <span>a</span><span>b</span><span>c</span><span>d</span><span>e</span>
+                        <span>f</span><span>g</span><span>h</span><span>i</span>
+                    </div>
+                    <div class="ranks">
+                        <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+                        <span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="ai-info">
+                    <h4>AI推荐</h4>
+                    <div id="aiRecommendation" class="ai-recommendation">
+                        <p>选择红方AI、黑方AI或双方AI获取推荐走法</p>
+                    </div>
+                </div>
+
+                <div class="piece-editor">
+                    <h4>棋子身份编辑</h4>
+                    <p>双击暗子可指定其真实身份：</p>
+                    <div class="piece-selector">
+                        <div class="piece-type-group">
+                            <h5>红方棋子:</h5>
+                            <div class="piece-buttons red-pieces">
+                                <button class="piece-btn" data-piece="R">車</button>
+                                <button class="piece-btn" data-piece="N">馬</button>
+                                <button class="piece-btn" data-piece="B">相</button>
+                                <button class="piece-btn" data-piece="A">仕</button>
+                                <button class="piece-btn" data-piece="C">炮</button>
+                                <button class="piece-btn" data-piece="P">兵</button>
+                            </div>
+                        </div>
+                        <div class="piece-type-group">
+                            <h5>黑方棋子:</h5>
+                            <div class="piece-buttons black-pieces">
+                                <button class="piece-btn" data-piece="r">車</button>
+                                <button class="piece-btn" data-piece="n">馬</button>
+                                <button class="piece-btn" data-piece="b">象</button>
+                                <button class="piece-btn" data-piece="a">士</button>
+                                <button class="piece-btn" data-piece="c">炮</button>
+                                <button class="piece-btn" data-piece="p">卒</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="pieceEditInfo" class="edit-info">
+                        双击暗子，然后点击对应的棋子类型
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <div id="messageArea" class="message-area"></div>
+    </div>
+
+    <!-- 弹窗组件 -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3 id="modalTitle">提示</h3>
+            <p id="modalMessage"></p>
+            <div class="modal-buttons">
+                <button id="modalConfirm" class="btn btn-primary">确认</button>
+                <button id="modalCancel" class="btn">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
