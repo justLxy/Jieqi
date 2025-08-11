@@ -216,7 +216,7 @@ TABLE_SIZE = 1e7
 QS_LIMIT = 219
 EVAL_ROUGHNESS = 13
 DRAW_TEST = True
-THINK_TIME = 1
+THINK_TIME = 5
 
 
 ###############################################################################
@@ -983,7 +983,7 @@ class Searcher:
 
         # In finished games, we could potentially go far enough to cause a recursion
         # limit exception. Hence we bound the ply.
-        for depth in range(1, 4):
+        for depth in range(2, 6):
             # The inner loop is a binary search on the score of the position.
             # Inv: lower <= score <= upper
             # 'while lower != upper' would work, but play tests show a margin of 20 plays
@@ -1107,9 +1107,23 @@ def generate_forbiddenmoves(pos, check_bozi=True, step=0):
     pos.set()
     moves = pos.gen_moves()
     for move in moves:
-        posnew = pos.move(move)
-        if cache.get(posnew.board, 0) > 0:
+        i, j = move
+        p = pos.board[i]
+        
+        board_after_move = pos.board
+        
+        if p in 'RNBAKCP':
+            board_after_move = put(board_after_move, j, p)
+        else:
+            board_after_move = put(board_after_move, j, mapping[254 - i].upper())
+            
+        board_after_move = put(board_after_move, i, '.')
+
+        rotated_board_for_cache = board_after_move[-2::-1].swapcase() + " "
+        
+        if cache.get(rotated_board_for_cache, 0) >= 2:
             forbidden_moves.add(move)
+
         if check_bozi:
             i, j = move
             p, q = pos.board[i], pos.board[j].upper()

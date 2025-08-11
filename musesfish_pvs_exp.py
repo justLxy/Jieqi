@@ -64,16 +64,16 @@ initial_covered = (
     '               \n'  # 0
     '               \n'  # 1
     '               \n'  # 2
-    '   defg.kfed   \n'  # 3
-    '   ....a....   \n'  # 4
+    '   defgkgfed   \n'  # 3
+    '   .........   \n'  # 4
     '   .h.....h.   \n'  # 5
-    '   i.i...i.i   \n'  # 6
-    '   .....r...   \n'  # 7
+    '   i.i.i.i.i   \n'  # 6
+    '   .........   \n'  # 7
     '   .........   \n'  # 8
     '   I.I.I.I.I   \n'  # 9
-    '   .H..B..H.   \n'  # 10
+    '   .H.....H.   \n'  # 10
     '   .........   \n'  # 11
-    '   DEFGKG.ED   \n'  # 12
+    '   DEFGKGFED   \n'  # 12
     '               \n'  # 13
     '               \n'  # 14
     '                '  # 15
@@ -158,7 +158,7 @@ TABLE_SIZE = 1e7
 QS_LIMIT = 219
 EVAL_ROUGHNESS = 13
 DRAW_TEST = True
-THINK_TIME = 1
+THINK_TIME = 10
 THRESHOLD = 150
 
 
@@ -1172,7 +1172,7 @@ class Searcher:
 
         # In finished games, we could potentially go far enough to cause a recursion
         # limit exception. Hence we bound the ply.
-        for depth in range(5, 8):
+        for depth in range(4, 5):
             # The inner loop is a binary search on the score of the position.
             # Inv: lower <= score <= upper
             # 'while lower != upper' would work, but play tests show a margin of 20 plays

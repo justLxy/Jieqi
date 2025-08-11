@@ -25,8 +25,8 @@ try:
     from board import common_20210604_fixed as common
     
     # 导入 musesfish AI 引擎
-    import musesfish_pvs_20210604_fixed as musesfish
-    from musesfish_pvs_20210604_fixed import Position, Searcher, Entry, MATE_UPPER, MATE_LOWER
+    import musesfish_pvs_exp as musesfish
+    from musesfish_pvs_exp import Position, Searcher, Entry, MATE_UPPER, MATE_LOWER
     
     AI_AVAILABLE = True
     print("AI engine loaded successfully")
