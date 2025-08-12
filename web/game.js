@@ -632,17 +632,17 @@ class JieqiGame {
                 } else {
                     // 界面上方（对手）吃掉了下方（玩家）的暗子，玩家不知道对手看到什么，直接以暗子符号记录
                     if (this.gameState.currentPlayer === 'red') {
-                        this.capturedPieces.red.push(toPiece);
+                        this.capturedPieces.black.push(toPiece); // 红方吃黑子
                     } else {
-                        this.capturedPieces.black.push(toPiece);
+                        this.capturedPieces.red.push(toPiece); // 黑方吃红子
                     }
                 }
             } else {
                 // 明子被吃掉，直接添加到被吃棋子列表
                 if (this.gameState.currentPlayer === 'red') {
-                    this.capturedPieces.red.push(toPiece);
+                    this.capturedPieces.black.push(toPiece); // 红方吃黑子
                 } else {
-                    this.capturedPieces.black.push(toPiece);
+                    this.capturedPieces.red.push(toPiece); // 黑方吃红子
                 }
             }
         }
@@ -1015,10 +1015,11 @@ class JieqiGame {
         const capturedByPlayer = this.pendingCapturedDarkPiece.capturedByPlayer;
         const move = this.pendingCapturedDarkPiece.move;
         
+        // 修复逻辑：如果红方吃了对手暗子，被吃的是黑方暗子；反之亦然
         if (capturedByPlayer === 'red') {
-            this.capturedPieces.red.push(selectedPiece);
+            this.capturedPieces.black.push(selectedPiece);  // 红方吃了黑方的暗子
         } else {
-            this.capturedPieces.black.push(selectedPiece);
+            this.capturedPieces.red.push(selectedPiece);    // 黑方吃了红方的暗子
         }
 
         // 更新移动记录中被吃棋子的真实类型
@@ -1272,9 +1273,9 @@ class JieqiGame {
                     // 如果被吃的是暗子且已确定真实类型，使用真实类型；否则使用原始类型
                     const capturedPieceType = historyMove.capturedPieceRealType || historyMove.capturedPiece;
                     if (historyMove.player === 'red') {
-                        this.capturedPieces.red.push(capturedPieceType);
+                        this.capturedPieces.black.push(capturedPieceType); // 红方走棋，吃掉的是黑子
                     } else {
-                        this.capturedPieces.black.push(capturedPieceType);
+                        this.capturedPieces.red.push(capturedPieceType); // 黑方走棋，吃掉的是红子
                     }
                 }
             }

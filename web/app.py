@@ -147,12 +147,12 @@ class WebJieqiAI:
             }
         
         try:
-            # 分析历史中的被吃暗子信息，更新AI的暗子统计
-            captured_dark_pieces = self.analyze_captured_dark_pieces(history)
-            self.update_ai_dark_piece_knowledge(captured_dark_pieces)
+            # 分析历史中的被吃棋子信息（包括明子和暗子），更新AI的棋子统计
+            captured_pieces = self.analyze_captured_pieces(history)
+            self.update_ai_piece_knowledge(captured_pieces)
             
-            # 保存暗子信息用于详情显示
-            self._last_captured_info = captured_dark_pieces
+            # 保存棋子信息用于详情显示
+            self._last_captured_info = captured_pieces
             
             # 转换棋盘格式
             musesfish_board = self.web_board_to_musesfish_board(web_board, current_player)
@@ -243,7 +243,7 @@ class WebJieqiAI:
             if to_piece != '.':
                 details.append(f"吃掉对方的{self.get_piece_name(to_piece)}")
             
-            # 添加AI暗子知识状态信息
+            # 添加AI棋子知识状态信息
             if hasattr(self, '_last_captured_info') and (self._last_captured_info['red'] or self._last_captured_info['black']):
                 known_info = []
                 if self._last_captured_info['red']:
@@ -252,7 +252,7 @@ class WebJieqiAI:
                 if self._last_captured_info['black']:
                     black_pieces = [f"{self.get_piece_name(k)}×{v}" for k, v in self._last_captured_info['black'].items()]
                     known_info.append(f"黑方被吃: {', '.join(black_pieces)}")
-                details.append(f"💡 AI已考虑被吃暗子信息: {'; '.join(known_info)}")
+                details.append(f"💡 AI已考虑被吃棋子信息: {'; '.join(known_info)}")
             
             # 添加反重复局面信息
             if hasattr(self, '_last_forbidden_count') and self._last_forbidden_count > 0:
@@ -302,36 +302,36 @@ class WebJieqiAI:
         }
         return piece_names.get(piece, '未知')
     
-    def analyze_captured_dark_pieces(self, history):
-        """分析游戏历史中的被吃暗子信息"""
-        captured_dark_pieces = {'red': {}, 'black': {}}
+    def analyze_captured_pieces(self, history):
+        """分析游戏历史中的被吃棋子信息（包括明子和暗子）"""
+        captured_pieces = {'red': {}, 'black': {}}
         
         if not history:
-            return captured_dark_pieces
+            return captured_pieces
         
         for move in history:
             # 检查是否有被吃的棋子
-            if move.get('capturedPiece') != '.' and move.get('capturedPieceRealType'):
-                dark_piece = move.get('capturedPiece')
-                real_type = move.get('capturedPieceRealType')
+            if move.get('capturedPiece') != '.':
+                captured_piece = move.get('capturedPiece')
+                real_type = move.get('capturedPieceRealType', captured_piece)  # 暗子用真实类型，明子用自身
                 
-                # 确定被吃暗子的阵营
-                if dark_piece in 'DEFGHI':  # 红方暗子被吃
+                # 确定被吃棋子的阵营
+                if captured_piece in 'DEFGHI' or real_type in 'RNBAKCP':  # 红方棋子被吃
                     side = 'red'
-                elif dark_piece in 'defghi':  # 黑方暗子被吃
+                elif captured_piece in 'defghi' or real_type in 'rnbakcp':  # 黑方棋子被吃
                     side = 'black'
                 else:
-                    continue  # 不是暗子，跳过
+                    continue  # 无法确定阵营，跳过
                 
-                # 记录被吃的暗子类型
-                if real_type not in captured_dark_pieces[side]:
-                    captured_dark_pieces[side][real_type] = 0
-                captured_dark_pieces[side][real_type] += 1
+                # 记录被吃的棋子类型（统一使用真实类型）
+                if real_type not in captured_pieces[side]:
+                    captured_pieces[side][real_type] = 0
+                captured_pieces[side][real_type] += 1
         
-        return captured_dark_pieces
+        return captured_pieces
     
-    def update_ai_dark_piece_knowledge(self, captured_dark_pieces):
-        """更新AI引擎的暗子统计信息"""
+    def update_ai_piece_knowledge(self, captured_pieces):
+        """更新AI引擎的棋子统计信息（包括明子和暗子）"""
         if not musesfish:
             return
         
@@ -339,16 +339,16 @@ class WebJieqiAI:
             # 重置di字典到初始状态
             musesfish.resetrbdict()
             
-            # 根据已知的被吃暗子信息更新di字典
-            for side, pieces in captured_dark_pieces.items():
+            # 根据已知的被吃棋子信息更新di字典
+            for side, pieces in captured_pieces.items():
                 for piece_type, count in pieces.items():
                     if side == 'red':
-                        # 红方暗子被吃，减少红方对应棋子的统计
+                        # 红方棋子被吃，减少红方对应棋子的统计
                         if piece_type in musesfish.di[0][True]:
                             musesfish.di[0][True][piece_type] = max(0, 
                                 musesfish.di[0][True][piece_type] - count)
                     else:
-                        # 黑方暗子被吃，减少黑方对应棋子的统计
+                        # 黑方棋子被吃，减少黑方对应棋子的统计
                         if piece_type in musesfish.di[0][False]:
                             musesfish.di[0][False][piece_type] = max(0, 
                                 musesfish.di[0][False][piece_type] - count)
@@ -357,10 +357,10 @@ class WebJieqiAI:
             if self.searcher:
                 self.searcher.calc_average()
                 
-            print(f"AI暗子知识已更新: 红方被吃{captured_dark_pieces['red']}, 黑方被吃{captured_dark_pieces['black']}")
+            print(f"AI棋子知识已更新: 红方被吃{captured_pieces['red']}, 黑方被吃{captured_pieces['black']}")
             
         except Exception as e:
-            print(f"更新AI暗子知识失败: {e}")
+            print(f"更新AI棋子知识失败: {e}")
     
     def build_position_history(self, history, current_player):
         """从游戏历史构建局面历史列表"""

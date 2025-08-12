@@ -24,7 +24,7 @@ b = {'r': 2, 'n': 2, 'b': 2, 'a': 2, 'c': 2, 'p': 5}
 di = {0: {True: deepcopy(r), False: deepcopy(b)}}
 sumall = {
     0: {True: sum(di[0][True][key] for key in di[0][True]), False: sum(di[0][False][key] for key in di[0][False])}}
-# 子力价值表参考“象眼”
+# 子力价值表参考"象眼"
 cache = {}
 forbidden_moves = set()
 kaijuku = deepcopy(library.kaijuku)
@@ -705,7 +705,7 @@ class Position(namedtuple('Position', 'board score turn version')):
             elif p == 'I':
                 if self.board[i - 32] in 'rp':  # 原先是RP, 这是个BUG!现解决
                     score -= average[self.version][self.turn][False]//2
-                elif self.board[i - 32] == 'nc':  # 之前是N, 不正确，已更正!
+                elif self.board[i - 32] in 'nc':  # 之前是N, 不正确，已更正!
                     score += 30
                 elif self.board[i - 48] == 'i':
                     score += 30
@@ -1076,7 +1076,7 @@ class Searcher:
         key = uncertainty_keys[i]
         if uncertainty_dict[key] == 'U':
             for di_key in di[version][turn]:
-                if di[version][turn][di_key] > 0 and di_key in 'RPCrpc':
+                if di[version][turn][di_key] > 0 and di_key in ('RPC' if turn else 'rpc'):
                     di[version][turn][di_key] -= 1
                     newboard = put(board, key, di_key.upper())
                     score_diff = pst[di_key.upper()][key] - average[version - 1][turn][True][key]
@@ -1086,7 +1086,7 @@ class Searcher:
 
         elif uncertainty_dict[key] == 'u':
             for di_key in di[version][notturn]:
-                if di[version][notturn][di_key] > 0 and di_key in 'RPCrpc':
+                if di[version][notturn][di_key] > 0 and di_key in ('rpc' if turn else 'RPC'):
                     di[version][notturn][di_key] -= 1
                     newboard = put(board, key, di_key.lower())
                     rkey = 254 - key
@@ -1319,7 +1319,7 @@ def generate_forbiddenmoves(pos, check_bozi=True, step=0):
             if p == 'H' and ((i == 164 and j == 52 and pos.board[51] in 'dr') or (
                     i == 170 and j == 58 and pos.board[59] in 'dr')):  # TODO: 使用更智能的方式处理博子
                 if (i == 164 and pos.board[131] == 'N' and pos.board[115] == 'p') or (
-                        j == 170 and pos.board[139] == 'N' and pos.board[123] == 'p'):  # 兵顶马
+                        i == 170 and pos.board[139] == 'N' and pos.board[123] == 'p'):  # 兵顶马
                     continue
                 if (i == 164 and pos.board[148] == 'p') or (i == 170 and pos.board[154] == 'p'):
                     continue
