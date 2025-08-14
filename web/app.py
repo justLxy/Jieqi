@@ -215,8 +215,9 @@ class WebJieqiAI:
                         fallback_move = move
                         fallback_score = score
                 
-                # 限制搜索时间
-                if time.time() - start_time > 2:  # 2秒限制
+                # 时间控制：模仿命令行版本的THINK_TIME逻辑
+                if time.time() - start_time > musesfish.THINK_TIME:
+                    print(f"搜索达到时间限制({musesfish.THINK_TIME}秒)，在深度{depth}停止")
                     break
             
             # 计算实际搜索时间
