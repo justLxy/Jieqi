@@ -65,8 +65,7 @@ class JieqiGame {
             'r': 2, 'n': 2, 'b': 2, 'a': 2, 'k': 1, 'c': 2, 'p': 5
         };
 
-        // 当前正在编辑的暗子位置
-        this.editingPiecePosition = null;
+
         
         // 等待暗子选择的状态
         this.pendingDarkPieceSelection = null;
@@ -103,7 +102,7 @@ class JieqiGame {
         this.blackCapturedElement = document.getElementById('blackCaptured');
         this.historyListElement = document.getElementById('historyList');
         this.aiRecommendationElement = document.getElementById('aiRecommendation');
-        this.pieceEditInfoElement = document.getElementById('pieceEditInfo');
+
         this.messageAreaElement = document.getElementById('messageArea');
 
         this.createBoard();
@@ -208,14 +207,7 @@ class JieqiGame {
         // 设置棋子文字
         pieceElement.textContent = this.pieceNames[piece] || '暗';
         
-        // 添加双击事件处理暗子身份编辑
-        if (piece.match(/[DEFGHIdefghi]/)) {
-            pieceElement.addEventListener('dblclick', (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                this.handleDarkPieceEdit(row, col);
-            });
-        }
+
         
         return pieceElement;
     }
@@ -449,6 +441,7 @@ class JieqiGame {
         const moves = [];
         const kingMoves = [[-1, 0], [1, 0], [0, -1], [0, 1]];
         
+        // 常规移动：一格移动
         kingMoves.forEach(([dr, dc]) => {
             const newRow = row + dr;
             const newCol = col + dc;
@@ -464,7 +457,72 @@ class JieqiGame {
             }
         });
         
+        // 特殊移动：帅将跳杀
+        const jumpKillMove = this.getKingJumpKillMove(row, col);
+        if (jumpKillMove) {
+            moves.push(jumpKillMove);
+        }
+        
         return moves;
+    }
+    
+    // 帅将跳杀规则：当帅和将在同一直线上且中间无子时，可以跳杀对方
+    getKingJumpKillMove(row, col) {
+        const currentPiece = this.gameState.board[row][col];
+        const isCurrentRed = currentPiece === 'K';
+        const targetPieceType = isCurrentRed ? 'k' : 'K'; // 要寻找的对方帅/将
+        
+        // 查找对方的帅/将位置
+        let enemyKingPos = null;
+        for (let r = 0; r < 10; r++) {
+            for (let c = 0; c < 9; c++) {
+                if (this.gameState.board[r][c] === targetPieceType) {
+                    enemyKingPos = { row: r, col: c };
+                    break;
+                }
+            }
+            if (enemyKingPos) break;
+        }
+        
+        if (!enemyKingPos) return null; // 对方帅/将不存在
+        
+        // 检查是否在同一行或同一列
+        const sameRow = row === enemyKingPos.row;
+        const sameCol = col === enemyKingPos.col;
+        
+        if (!sameRow && !sameCol) return null; // 不在同一直线上
+        
+        // 检查中间是否有棋子阻挡
+        if (sameRow) {
+            // 同一行，检查列方向
+            const startCol = Math.min(col, enemyKingPos.col);
+            const endCol = Math.max(col, enemyKingPos.col);
+            
+            // 检查中间是否有棋子
+            for (let c = startCol + 1; c < endCol; c++) {
+                if (this.gameState.board[row][c] !== '.') {
+                    return null; // 中间有棋子阻挡
+                }
+            }
+        } else if (sameCol) {
+            // 同一列，检查行方向
+            const startRow = Math.min(row, enemyKingPos.row);
+            const endRow = Math.max(row, enemyKingPos.row);
+            
+            // 检查中间是否有棋子
+            for (let r = startRow + 1; r < endRow; r++) {
+                if (this.gameState.board[r][col] !== '.') {
+                    return null; // 中间有棋子阻挡
+                }
+            }
+        }
+        
+        // 可以跳杀，返回移动到对方位置的走法
+        return {
+            row: enemyKingPos.row,
+            col: enemyKingPos.col,
+            isCapture: true
+        };
     }
 
     // 炮的移动规则
@@ -1166,13 +1224,7 @@ class JieqiGame {
         });
     }
 
-    handleDarkPieceEdit(row, col) {
-        this.editingPiecePosition = { row, col };
-        this.pieceEditInfoElement.textContent = `点击下方按钮指定位置 (${row}, ${col}) 暗子的真实身份`;
-        this.pieceEditInfoElement.style.background = '#d1ecf1';
-        this.pieceEditInfoElement.style.borderColor = '#bee5eb';
-        this.showMessage(`已选择位置 (${row}, ${col}) 的暗子，请在右侧选择棋子类型`, 'info');
-    }
+
 
     getSquareElement(logicRow, logicCol) {
         // 将逻辑坐标转换为显示坐标
@@ -1453,35 +1505,7 @@ class JieqiGame {
             this.executeAIRecommendation();
         });
 
-        // 棋子身份编辑
-        document.querySelectorAll('.piece-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                if (!this.editingPiecePosition) {
-                    this.showMessage('请先点击一个暗子', 'warning');
-                    return;
-                }
-                
-                const pieceType = btn.dataset.piece;
-                const { row, col } = this.editingPiecePosition;
-                
-                this.gameState.board[row][col] = pieceType;
-                this.updateBoard();
-                
-                this.pieceEditInfoElement.textContent = `已将位置 (${row}, ${col}) 的暗子设置为${this.pieceNames[pieceType]}`;
-                this.pieceEditInfoElement.style.background = '#d4edda';
-                this.pieceEditInfoElement.style.borderColor = '#c3e6cb';
-                
-                this.editingPiecePosition = null;
-                this.showMessage(`暗子身份已设置为${this.pieceNames[pieceType]}`, 'success');
-                
-                // 重置提示信息
-                setTimeout(() => {
-                    this.pieceEditInfoElement.textContent = '双击暗子，然后点击对应的棋子类型';
-                    this.pieceEditInfoElement.style.background = '#fff3cd';
-                    this.pieceEditInfoElement.style.borderColor = '#ffeaa7';
-                }, 2000);
-            });
-        });
+
 
         // 关闭弹窗
         document.querySelector('.close').addEventListener('click', () => {

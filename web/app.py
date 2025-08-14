@@ -154,40 +154,51 @@ class WebJieqiAI:
             # 保存棋子信息用于详情显示
             self._last_captured_info = captured_pieces
             
-            # 转换棋盘格式
-            musesfish_board = self.web_board_to_musesfish_board(web_board, current_player)
-            
-            # 创建Position对象
-            turn = current_player == 'red'  # True为红方，False为黑方
-            position = Position(musesfish_board, 0, turn, 0).set()
+            # --- 使用 musesfish 引擎的反重复逻辑 ---
+            # 1. 获取所有历史棋盘局面（从人类玩家的固定视角）
+            all_web_boards = []
+            if history:
+                # history[i].boardState 是第 i 步前的棋盘状态
+                all_web_boards = [h['boardState'] for h in history]
+            # 追加当前棋盘状态
+            all_web_boards.append(web_board)
 
-            # 如果是黑方回合，需要旋转棋盘，因为AI总是为红方（大写棋子）思考
+            # 2. 填充 musesfish 的全局 cache
+            # cache 需要从人类（红方）的统一视角进行填充
+            musesfish.cache.clear()
+            for b in all_web_boards:
+                # 统一转换成红方（人类玩家）视角的棋盘字符串
+                musesfish_board_str = self.web_board_to_musesfish_board(b, 'red')
+                musesfish.setcache(musesfish_board_str)
+
+            # 3. 创建当前局面对象，供AI思考
+            # 棋盘需要转换成当前玩家的视角，然后旋转成AI的标准视角（大写棋子在下方）
+            musesfish_board = self.web_board_to_musesfish_board(web_board, current_player)
+            turn = current_player == 'red'
+            position = Position(musesfish_board, 0, turn, 0).set()
             if not turn:
                 position = position.rotate()
-            
-            # 搜索最佳移动
-            best_move = None
-            best_score = 0
-            search_depth = 0
-            
-            # 生成历史局面列表用于重复检测
-            position_history = self.build_position_history(history, current_player)
-            
-            # 生成禁着（重复局面限制）
-            forbidden_moves = self.generate_anti_repeat_moves(position, position_history)
+
+            # 4. 调用 musesfish 引擎生成禁着
+            # 这会使用全局的 cache，并更新全局的 forbidden_moves
+            forbidden_moves = musesfish.generate_forbiddenmoves(position)
+            # --- 逻辑修改结束 ---
+
             self._last_forbidden_count = len(forbidden_moves)
             self._forced_move_warning = False
             
-            # 更新musesfish的全局禁着变量
-            if musesfish:
-                musesfish.forbidden_moves = forbidden_moves
+            # AI 搜索引擎会隐式使用 musesfish.forbidden_moves 全局变量
             
             # 使用AI搜索
             start_time = time.time()
+            best_move = None
+            best_score = 0
+            search_depth = 0
             fallback_move = None
             fallback_score = float('-inf')
             
-            for depth, move, score in self.searcher.search(position, position_history):
+            # searcher.search() 会使用 musesfish.forbidden_moves 来过滤
+            for depth, move, score in self.searcher.search(position, ()):
                 # 记录第一个可用走法作为后备
                 if fallback_move is None:
                     fallback_move = move
@@ -362,45 +373,6 @@ class WebJieqiAI:
         except Exception as e:
             print(f"更新AI棋子知识失败: {e}")
     
-    def build_position_history(self, history, current_player):
-        """从游戏历史构建局面历史列表"""
-        position_history = []
-        
-        if not history:
-            return position_history
-        
-        try:
-            # 从初始局面开始重建历史
-            current_board = self.get_initial_board()
-            current_turn = True  # 红方先手
-            
-            for move_data in history:
-                # 将当前局面转换为musesfish格式并添加到历史
-                musesfish_board = self.web_board_to_musesfish_board(current_board, 'red' if current_turn else 'black')
-                position = Position(musesfish_board, 0, current_turn, 0).set()
-                
-                # 如果是黑方视角，旋转棋盘
-                if not current_turn:
-                    position = position.rotate()
-                
-                position_history.append(position)
-                
-                # 应用移动到棋盘
-                from_row, from_col = move_data['from']['row'], move_data['from']['col']
-                to_row, to_col = move_data['to']['row'], move_data['to']['col']
-                
-                # 执行移动
-                current_board[to_row][to_col] = current_board[from_row][from_col]
-                current_board[from_row][from_col] = '.'
-                
-                # 切换玩家
-                current_turn = not current_turn
-                
-        except Exception as e:
-            print(f"构建局面历史失败: {e}")
-            
-        return position_history
-    
     def get_initial_board(self):
         """获取初始棋盘状态"""
         # 标准暗棋初始布局
@@ -417,42 +389,6 @@ class WebJieqiAI:
             ['d', 'e', 'f', 'g', 'h', 'f', 'e', 'd', '.']
         ]
         return [row[:] for row in initial]  # 深拷贝
-    
-    def generate_anti_repeat_moves(self, position, position_history):
-        """生成禁着走法，防止重复局面"""
-        forbidden_moves = set()
-        
-        try:
-            if not musesfish:
-                return forbidden_moves
-            
-            # 统计历史局面出现次数
-            position_count = {}
-            for pos in position_history:
-                board_key = pos.board
-                position_count[board_key] = position_count.get(board_key, 0) + 1
-            
-            # 检查所有可能的走法
-            moves = position.gen_moves()
-            for move in moves:
-                # 尝试执行这个走法
-                new_position = position.move(move)
-                
-                # 检查新局面是否会导致重复超过2次
-                board_key = new_position.board
-                current_count = position_count.get(board_key, 0)
-                
-                if current_count >= 2:  # 限制为最多重复2次
-                    forbidden_moves.add(move)
-                    print(f"禁止走法 {move}: 会导致局面重复 {current_count + 1} 次")
-            
-            if forbidden_moves:
-                print(f"生成了 {len(forbidden_moves)} 个禁着走法以防止重复局面")
-                
-        except Exception as e:
-            print(f"生成禁着走法失败: {e}")
-            
-        return forbidden_moves
     
     def evaluate_position(self, web_board, current_player):
         """评估当前局面"""

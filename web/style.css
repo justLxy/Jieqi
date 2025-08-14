@@ -668,7 +668,7 @@ input:checked + .slider:before {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
-.ai-info h4, .piece-editor h4 {
+.ai-info h4 {
     color: #2c3e50;
     margin-bottom: 15px;
     border-bottom: 2px solid #3498db;
@@ -696,10 +696,7 @@ input:checked + .slider:before {
     color: #1976d2;
 }
 
-.piece-editor {
-    margin-top: 25px;
-}
-
+/* 暗子选择器样式（游戏规则必需） */
 .piece-type-group {
     margin-bottom: 20px;
 }
@@ -782,16 +779,6 @@ input:checked + .slider:before {
 
 .piece-btn.disabled .piece-count {
     color: #999;
-}
-
-.edit-info {
-    background: #fff3cd;
-    border: 1px solid #ffeaa7;
-    border-radius: 5px;
-    padding: 10px;
-    margin-top: 15px;
-    color: #856404;
-    text-align: center;
 }
 
 /* 消息区域 */

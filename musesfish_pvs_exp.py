@@ -1302,7 +1302,7 @@ def translate_eat(eat, dst, turn, type):
 
 def generate_forbiddenmoves(pos, check_bozi=True, step=0):
     # 生成禁着
-    # 这里禁着判断比较简单，如果走了这步棋以后形成的局面在过往局面中超过3次，不允许电脑走。
+    # 这里禁着判断比较简单，如果走了这步棋以后形成的局面在过往局面中已经出现2次或以上，则不允许电脑走这步棋（防止长将）。
     # 这里的pos是电脑视角
     global forbidden_moves
     forbidden_moves = set()
@@ -1310,7 +1310,7 @@ def generate_forbiddenmoves(pos, check_bozi=True, step=0):
     moves = pos.gen_moves()
     for move in moves:
         posnew = pos.move(move)
-        if cache.get(posnew.board, 0) > 0:
+        if cache.get(posnew.board, 0) >= 2:
             forbidden_moves.add(move)
         if check_bozi:
             i, j = move
