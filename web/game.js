@@ -649,21 +649,19 @@ class JieqiGame {
     executeMove(fromRow, fromCol, toRow, toCol) {
         const fromPiece = this.gameState.board[fromRow][fromCol];
         const toPiece = this.gameState.board[toRow][toCol];
-        
-        // 记录移动到历史
+
+        // 清除当前位置之后的历史
+        this.gameState.gameHistory = this.gameState.gameHistory.slice(0, this.gameState.currentMoveIndex + 1);
+
+        // 创建移动对象
         const move = {
             from: { row: fromRow, col: fromCol },
             to: { row: toRow, col: toCol },
             piece: fromPiece,
             capturedPiece: toPiece,
             player: this.gameState.currentPlayer,
-            boardState: JSON.parse(JSON.stringify(this.gameState.board))
+            // boardStateAfter 将在 completeMoveExecution 中添加
         };
-        
-        // 清除当前位置之后的历史
-        this.gameState.gameHistory = this.gameState.gameHistory.slice(0, this.gameState.currentMoveIndex + 1);
-        this.gameState.gameHistory.push(move);
-        this.gameState.currentMoveIndex++;
 
         // 处理吃子
         if (toPiece !== '.') {
@@ -714,6 +712,7 @@ class JieqiGame {
         // 暗子翻开逻辑：暗子移动后需要用户选择真实身份
         if (fromPiece.match(/[DEFGHIdefghi]/)) {
             // 暂停游戏流程，让用户选择暗子类型
+            // 注意：此时还不更新游戏历史，等待用户选择后再更新
             this.showDarkPieceSelector(toRow, toCol, fromPiece, move);
             return; // 暂停执行，等待用户选择
         }
@@ -1142,6 +1141,14 @@ class JieqiGame {
         // 清除AI推荐高亮和箭头
         this.clearAIHighlight();
         
+        // 在移动完全结束后，记录棋盘状态
+        move.boardStateAfter = JSON.parse(JSON.stringify(this.gameState.board));
+
+        // 更新历史记录
+        this.gameState.gameHistory.push(move);
+        this.gameState.currentMoveIndex++;
+        this.lastMove = move;
+        
         // 更新显示
         this.updateDisplay();
         
@@ -1286,24 +1293,18 @@ class JieqiGame {
     gotoMove(moveIndex) {
         if (moveIndex < -1 || moveIndex >= this.gameState.gameHistory.length) return;
         
-        // 清除可能存在的暗子选择状态
+        // 清除各种悬而未决的状态
         if (this.pendingDarkPieceSelection) {
             const existingSelector = document.querySelector('.panel-dark-piece-selector');
-            if (existingSelector) {
-                existingSelector.remove();
-            }
+            if (existingSelector) existingSelector.remove();
             this.pendingDarkPieceSelection = null;
         }
-        
-        // 清除可能存在的被吃暗子选择状态
         if (this.pendingCapturedDarkPiece) {
-            const existingCapturedSelector = document.querySelector('.panel-captured-dark-piece-selector');
-            if (existingCapturedSelector) {
-                existingCapturedSelector.remove();
-            }
+            const existingSelector = document.querySelector('.panel-captured-dark-piece-selector');
+            if (existingSelector) existingSelector.remove();
             this.pendingCapturedDarkPiece = null;
         }
-        
+
         this.gameState.currentMoveIndex = moveIndex;
         
         if (moveIndex === -1) {
@@ -1311,10 +1312,11 @@ class JieqiGame {
             this.gameState.board = this.createInitialBoard();
             this.gameState.currentPlayer = 'red';
             this.capturedPieces = { red: [], black: [] };
+            this.lastMove = null;
         } else {
-            // 恢复到指定移动后的状态
+            // 恢复到指定移动完成后的状态
             const move = this.gameState.gameHistory[moveIndex];
-            this.gameState.board = JSON.parse(JSON.stringify(move.boardState));
+            this.gameState.board = JSON.parse(JSON.stringify(move.boardStateAfter));
             this.gameState.currentPlayer = move.player === 'red' ? 'black' : 'red';
             
             // 重建被吃棋子列表
@@ -1322,23 +1324,20 @@ class JieqiGame {
             for (let i = 0; i <= moveIndex; i++) {
                 const historyMove = this.gameState.gameHistory[i];
                 if (historyMove.capturedPiece !== '.') {
-                    // 如果被吃的是暗子且已确定真实类型，使用真实类型；否则使用原始类型
                     const capturedPieceType = historyMove.capturedPieceRealType || historyMove.capturedPiece;
                     if (historyMove.player === 'red') {
-                        this.capturedPieces.black.push(capturedPieceType); // 红方走棋，吃掉的是黑子
+                        this.capturedPieces.black.push(capturedPieceType);
                     } else {
-                        this.capturedPieces.red.push(capturedPieceType); // 黑方走棋，吃掉的是红子
+                        this.capturedPieces.red.push(capturedPieceType);
                     }
                 }
             }
+            this.lastMove = move;
         }
         
         this.deselectSquare();
         this.clearAIHighlight();
         this.updateDisplay();
-        
-        // 更新lastMove
-        this.lastMove = moveIndex >= 0 ? this.gameState.gameHistory[moveIndex] : null;
     }
 
     checkGameEnd() {
@@ -1441,13 +1440,23 @@ class JieqiGame {
 
         // 悔棋
         document.getElementById('undoMove').addEventListener('click', () => {
-            // 如果正在等待暗子选择，先取消选择
-            if (this.pendingDarkPieceSelection) {
-                const existingSelector = document.querySelector('.panel-dark-piece-selector');
-                if (existingSelector) {
-                    existingSelector.remove();
-                }
+            // 如果有待处理的选择，悔棋意味着取消当前操作
+            if (this.pendingDarkPieceSelection || this.pendingCapturedDarkPiece) {
+                // 清理界面
+                const darkPieceSelector = document.querySelector('.panel-dark-piece-selector');
+                if (darkPieceSelector) darkPieceSelector.remove();
+                const capturedDarkPieceSelector = document.querySelector('.panel-captured-dark-piece-selector');
+                if (capturedDarkPieceSelector) capturedDarkPieceSelector.remove();
+                
+                // 重置状态
                 this.pendingDarkPieceSelection = null;
+                this.pendingCapturedDarkPiece = null;
+
+                // 由于移动还没有完成（没有加入历史），只需要回退棋盘状态
+                // 恢复到当前历史位置的状态
+                this.gotoMove(this.gameState.currentMoveIndex);
+                this.showMessage('操作已取消', 'success');
+                return;
             }
             
             if (this.gameState.currentMoveIndex >= 0) {
