@@ -1172,7 +1172,7 @@ class Searcher:
 
         # In finished games, we could potentially go far enough to cause a recursion
         # limit exception. Hence we bound the ply.
-        for depth in range(4, 5):
+        for depth in range(4, 9):
             # The inner loop is a binary search on the score of the position.
             # Inv: lower <= score <= upper
             # 'while lower != upper' would work, but play tests show a margin of 20 plays

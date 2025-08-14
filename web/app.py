@@ -158,8 +158,8 @@ class WebJieqiAI:
             # 1. 获取所有历史棋盘局面（从人类玩家的固定视角）
             all_web_boards = []
             if history:
-                # history[i].boardState 是第 i 步前的棋盘状态
-                all_web_boards = [h['boardState'] for h in history]
+                # history[i].boardStateAfter 是第 i 步完成后的棋盘状态
+                all_web_boards = [h['boardStateAfter'] for h in history if 'boardStateAfter' in h]
             # 追加当前棋盘状态
             all_web_boards.append(web_board)
 
@@ -218,6 +218,10 @@ class WebJieqiAI:
                 # 限制搜索时间
                 if time.time() - start_time > 2:  # 2秒限制
                     break
+            
+            # 计算实际搜索时间
+            search_time = time.time() - start_time
+            print(f"AI搜索完成: 深度={search_depth}, 分数={best_score}, 耗时={search_time:.3f}秒")
             
             # 如果没有找到非禁着的走法，使用后备走法
             if best_move is None and fallback_move is not None:
@@ -293,6 +297,7 @@ class WebJieqiAI:
                 },
                 'score': int(best_score),
                 'depth': search_depth,
+                'search_time': round(search_time, 3),
                 'details': details
             }
             

@@ -1640,7 +1640,7 @@ class JieqiGame {
             return;
         }
 
-        const { move, score, depth, details } = recommendation;
+        const { move, score, depth, search_time, details } = recommendation;
         const playerName = playerType === 'red' ? '红方' : '黑方';
         const playerColor = playerType === 'red' ? '#d32f2f' : '#424242';
         
@@ -1657,6 +1657,9 @@ class JieqiGame {
             </div>
             <div class="ai-move-detail">
                 <strong>搜索深度:</strong> ${depth}
+            </div>
+            <div class="ai-move-detail">
+                <strong>搜索时间:</strong> ${search_time}秒
             </div>
             <div class="ai-move-detail">
                 <strong>评估分数:</strong> ${score}
@@ -1696,7 +1699,7 @@ class JieqiGame {
         
         // 红方推荐
         if (redRecommendation && redRecommendation.move) {
-            const { move: redMove, score: redScore, depth: redDepth } = redRecommendation;
+            const { move: redMove, score: redScore, depth: redDepth, search_time: redTime } = redRecommendation;
             this.highlightAIRecommendation(redMove, 'red');
             
             html += `
@@ -1711,13 +1714,16 @@ class JieqiGame {
                     <div class="ai-move-detail">
                         <strong>评分:</strong> ${redScore} (深度: ${redDepth})
                     </div>
+                    <div class="ai-move-detail">
+                        <strong>时间:</strong> ${redTime}秒
+                    </div>
                 </div>
             `;
         }
         
         // 黑方推荐
         if (blackRecommendation && blackRecommendation.move) {
-            const { move: blackMove, score: blackScore, depth: blackDepth } = blackRecommendation;
+            const { move: blackMove, score: blackScore, depth: blackDepth, search_time: blackTime } = blackRecommendation;
             this.highlightAIRecommendation(blackMove, 'black');
             
             html += `
@@ -1731,6 +1737,9 @@ class JieqiGame {
                     </div>
                     <div class="ai-move-detail">
                         <strong>评分:</strong> ${blackScore} (深度: ${blackDepth})
+                    </div>
+                    <div class="ai-move-detail">
+                        <strong>时间:</strong> ${blackTime}秒
                     </div>
                 </div>
             `;
@@ -1851,17 +1860,36 @@ class JieqiGame {
         }
 
         const { move } = recommendation;
-        const success = this.attemptMove(move.from.row, move.from.col, move.to.row, move.to.col);
-
-        if (success) {
-            this.showMessage('AI推荐已执行', 'success');
-            this.clearAIHighlight();
-            this.aiRecommendation = null;
-            this.aiRecommendationElement.innerHTML = '<p>等待玩家或AI操作</p>';
-            // AI移动也是移动，所以要更新lastMove
-            this.lastMove = { from: move.from, to: move.to };
-            this.updateDisplay();
+        
+        // AI推荐已经过后端验证，直接执行移动而不进行前端重复验证
+        // 这样可以避免假阳性的"不合法"提示
+        const fromRow = move.from.row;
+        const fromCol = move.from.col;
+        const toRow = move.to.row;
+        const toCol = move.to.col;
+        
+        // 基本安全检查
+        if (!this.isValidPosition(fromRow, fromCol) || !this.isValidPosition(toRow, toCol)) {
+            this.showMessage('AI推荐坐标无效', 'error');
+            return;
         }
+        
+        const fromPiece = this.gameState.board[fromRow][fromCol];
+        if (fromPiece === '.') {
+            this.showMessage('AI推荐的起始位置没有棋子', 'error');
+            return;
+        }
+        
+        // 直接执行移动
+        this.executeMove(fromRow, fromCol, toRow, toCol);
+        
+        this.showMessage('AI推荐已执行', 'success');
+        this.clearAIHighlight();
+        this.aiRecommendation = null;
+        this.aiRecommendationElement.innerHTML = '<p>等待玩家或AI操作</p>';
+        // AI移动也是移动，所以要更新lastMove
+        this.lastMove = { from: move.from, to: move.to };
+        this.updateDisplay();
     }
 
     // 新增：检查并触发AI走棋
