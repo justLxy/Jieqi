@@ -30,18 +30,29 @@ class WebJieqiAI:
     """Web版暗棋AI接口"""
     
     def __init__(self):
+        self.game_id = None
         self.initialize_ai()
         
+    def __del__(self):
+        if AI_AVAILABLE and self.game_id is not None:
+            try:
+                cppjieqi.delete_game(self.game_id)
+                print(f"C++ game instance {self.game_id} deleted.")
+            except Exception as e:
+                print(f"Error deleting game instance {self.game_id}: {e}")
+
     def initialize_ai(self):
         """初始化AI引擎"""
         if not AI_AVAILABLE:
             return False
         try:
             cppjieqi.initialize()
-            print("C++ AI engine initialized")
+            self.game_id = cppjieqi.create_game()
+            print(f"C++ AI engine initialized and game instance {self.game_id} created.")
             return True
         except Exception as e:
             print(f"C++ AI initialization failed: {e}")
+            self.game_id = None
             return False
 
     def ucci_to_web_move(self, ucci_move):
@@ -70,6 +81,12 @@ class WebJieqiAI:
                 'error': 'AI engine not available'
             }
         
+        if self.game_id is None:
+            return {
+                'success': False,
+                'error': 'AI game instance not created'
+            }
+        
         try:
             start_time = time.time()
 
@@ -79,8 +96,11 @@ class WebJieqiAI:
             # 2. 确定当前是否为红方回合
             is_red_turn = current_player == 'red'
             
-            # 3. 调用C++ AI引擎获取最佳走法 (UCCI格式)
-            ai_move_ucci = cppjieqi.get_ai_move(board_str, is_red_turn, len(history), depth)
+            # 3. 设置C++引擎的棋盘状态
+            cppjieqi.set_board(self.game_id, board_str, is_red_turn, len(history))
+
+            # 4. 调用C++ AI引擎获取最佳走法 (UCCI格式)
+            ai_move_ucci = cppjieqi.get_ai_move(self.game_id, depth)
             
             search_time = time.time() - start_time
             
@@ -161,12 +181,20 @@ class WebJieqiAI:
                 'success': False,
                 'error': 'AI engine not available'
             }
+        if self.game_id is None:
+            return {
+                'success': False,
+                'error': 'AI game instance not created'
+            }
         try:
             board_str = "".join(["".join(row) for row in web_board])
             is_red_turn = current_player == 'red'
             
+            # 设置C++引擎的棋盘状态
+            cppjieqi.set_board(self.game_id, board_str, is_red_turn, len(history))
+
             # C++引擎返回相对于当前玩家的分数
-            score_relative = cppjieqi.get_board_evaluation(board_str, is_red_turn, len(history))
+            score_relative = cppjieqi.get_board_evaluation(self.game_id)
 
             # 将分数统一转换为红方视角
             score_for_red = score_relative if is_red_turn else -score_relative
@@ -309,10 +337,19 @@ def win_probability():
         history = data.get('history', [])
         if not web_board:
             return jsonify({'success': False, 'error': 'Board data required'}), 400
+        
+        if ai_engine.game_id is None:
+            return jsonify({'success': False, 'error': 'AI game instance not created'}), 500
+
         # 计算红方视角评分
         board_str = "".join(["".join(row) for row in web_board])
         is_red_turn = current_player == 'red'
-        score_relative = cppjieqi.get_board_evaluation(board_str, is_red_turn, len(history))
+        
+        # Set the board state in the C++ engine first
+        cppjieqi.set_board(ai_engine.game_id, board_str, is_red_turn, len(history))
+        
+        # Now get the evaluation
+        score_relative = cppjieqi.get_board_evaluation(ai_engine.game_id)
         score_for_red = score_relative if is_red_turn else -score_relative
         # 转为 WDL 概率
         wdl = ai_engine._score_to_wdl(score_for_red, move_count=len(history))

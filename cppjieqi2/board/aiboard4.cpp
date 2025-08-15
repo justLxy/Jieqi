@@ -3,6 +3,7 @@
 
 char LUT4[256];
 
+std::mt19937_64 board::AIBoard4::rng(std::chrono::high_resolution_clock::now().time_since_epoch().count());
 bool board::AIBoard4::has_initialized = false;
 const int board::AIBoard4::_chess_board_size = CHESS_BOARD_SIZE;
 const char board::AIBoard4::_initial_state[MAX] = 
@@ -105,6 +106,18 @@ board::AIBoard4::AIBoard4(const char another_state[MAX], bool turn, int round, c
     }
     has_initialized = true;
     _has_initialized = true;
+}
+
+board::AIBoard4::~AIBoard4() {
+    // now we manage hist in AIManager, so we don't delete it here.
+}
+
+void board::AIBoard4::Reset() noexcept {
+    zobrist_hash = 0;
+    _initialize_zobrist();
+    zobrist_cache.clear();
+    zobrist_cache.insert((zobrist_hash << 1)|original_turn);
+    ply = 0;
 }
 
 void board::AIBoard4::_initialize_dir(){

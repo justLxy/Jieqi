@@ -230,6 +230,7 @@ struct scoretuple{
 namespace board{
 class AIBoard4 : public Thinker{
 public:
+    static std::mt19937_64 rng;
     static bool has_initialized;
     short aiaverage[VERSION_MAX][2][2][256];
     unsigned char aisumall[VERSION_MAX][2];
@@ -284,7 +285,7 @@ public:
     AIBoard4()=delete;
     AIBoard4(const char another_state[MAX], bool turn, int round, const unsigned char di[VERSION_MAX][2][123], short score, tp* tptable, std::unordered_map<std::string, bool>* hist) noexcept;
     AIBoard4(const AIBoard4& another_board) = delete;
-    virtual ~AIBoard4()=default;
+    virtual ~AIBoard4();
     void Reset() noexcept;
     void SetScoreFunction(std::string function_name, int type);
     std::string SearchScoreFunction(int type);
@@ -418,8 +419,7 @@ public:
     };
 
     std::function<uint64_t(void)> randU64 = []() -> uint64_t{
-       std::mt19937_64 gen(std::chrono::high_resolution_clock::now().time_since_epoch().count());
-       uint64_t randomNumber = gen();
+       uint64_t randomNumber = rng();
        return randomNumber;
     };
 
