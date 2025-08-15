@@ -993,9 +993,82 @@ class JieqiGame {
             
             if (evaluation.success) {
                 this.displayPositionEvaluation(evaluation);
+                // 评估成功后，获取胜率/和棋/负概率
+                await this.getWinProbability();
             }
         } catch (error) {
             console.warn('局面评估失败:', error);
+        }
+    }
+
+    // 调用胜率接口
+    async getWinProbability() {
+        try {
+            const response = await fetch('/api/win-probability', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    board: this.gameState.board,
+                    currentPlayer: this.gameState.currentPlayer,
+                    history: this.gameState.gameHistory
+                })
+            });
+            if (!response.ok) return;
+            const result = await response.json();
+            if (result.success) {
+                this.displayWinProbability(result);
+            }
+        } catch (e) {
+            console.warn('胜率接口调用失败:', e);
+        }
+    }
+
+    // 显示WDL胜率
+    displayWinProbability(result) {
+        let evaluationElement = document.getElementById('positionEvaluation');
+        if (!evaluationElement) {
+            this.createPositionEvaluationElement();
+            evaluationElement = document.getElementById('positionEvaluation');
+        }
+        // 先移除旧的WDL区块，避免重复叠加
+        const old = evaluationElement.querySelector('.wdl-section');
+        if (old) old.remove();
+
+        const rw = Math.round(result.wdl.red_win * 100);
+        const dw = Math.round(result.wdl.draw * 100);
+        const bw = Math.round(result.wdl.black_win * 100);
+        const currentRate = Math.round(result.current_player_winrate * 100);
+        const currentLabel = result.current_player === 'red' ? '红方' : '黑方';
+        const wdlHTML = `
+            <div class="wdl-section">
+                <h4 style="margin-top:12px;">🎯 胜率（W/D/L）</h4>
+                <div class="wdl-summary">
+                    <div class="wdl-row"><span>红胜</span><strong>${rw}%</strong></div>
+                    <div class="wdl-row"><span>和棋</span><strong>${dw}%</strong></div>
+                    <div class="wdl-row"><span>黑胜</span><strong>${bw}%</strong></div>
+                    <div class="wdl-row"><span>当前${currentLabel}胜率</span><strong>${currentRate}%</strong></div>
+                </div>
+                <div class="wdl-bar" title="红胜 ${rw}% · 和棋 ${dw}% · 黑胜 ${bw}%">
+                    <div class="wdl-red" style="width:${rw}%"></div>
+                    <div class="wdl-draw" style="width:${dw}%"></div>
+                    <div class="wdl-black" style="width:${bw}%"></div>
+                </div>
+            </div>`;
+        evaluationElement.insertAdjacentHTML('beforeend', wdlHTML);
+    }
+
+    // 创建WDL显示面板
+    createWinProbabilityElement() {
+        const rightPanel = document.querySelector('.right-panel');
+        if (rightPanel && !document.getElementById('winProbability')) {
+            const el = document.createElement('div');
+            el.id = 'winProbability';
+            el.className = 'win-probability';
+            el.style.cssText = `
+                display:none;
+            `;
+            const aiInfo = rightPanel.querySelector('.ai-info');
+            rightPanel.insertBefore(el, aiInfo);
         }
     }
 

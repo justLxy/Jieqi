@@ -126,6 +126,34 @@ class WebJieqiAI:
                 'error': f'AI error: {str(e)}'
             }
 
+    def _score_to_wdl(self, score_for_red: float, move_count: int = 0):
+        # 基于评分的快速概率映射（可后续标定）
+        # 红方评分为正 → 红方胜率高；为负 → 黑方胜率高
+        # s 控制曲线陡峭度；draw_base 控制和棋基准概率，随优势增大而衰减
+        s = 350.0
+        draw_base = 0.12
+        # 让残局（步数多）和棋概率更低一些
+        phase = max(0.0, 1.0 - min(move_count, 80) / 80.0)
+        draw_prob = draw_base * (0.6 + 0.4 * phase) * (1.0 - math.tanh(abs(score_for_red) / 500.0))
+        # 红方胜率（不含和棋）
+        p_red_raw = 1.0 / (1.0 + math.exp(-score_for_red / s))
+        p_black_raw = 1.0 - p_red_raw
+        # 归一化到剩余概率（1 - draw）
+        remain = max(1e-6, 1.0 - draw_prob)
+        p_red = p_red_raw * remain
+        p_black = p_black_raw * remain
+        # 再归一一次以防数值误差
+        total = p_red + p_black + draw_prob
+        if total > 0:
+            p_red /= total
+            p_black /= total
+            draw_prob /= total
+        return {
+            'red_win': round(p_red, 4),
+            'draw': round(draw_prob, 4),
+            'black_win': round(p_black, 4)
+        }
+
     def evaluate_position(self, web_board, current_player, history):
         """评估当前局面"""
         if not AI_AVAILABLE:
@@ -269,6 +297,37 @@ def position_evaluation():
             'success': False,
             'error': f'Evaluation error: {str(e)}'
         }), 500
+
+@app.route('/api/win-probability', methods=['POST'])
+def win_probability():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        web_board = data.get('board')
+        current_player = data.get('currentPlayer', 'red')
+        history = data.get('history', [])
+        if not web_board:
+            return jsonify({'success': False, 'error': 'Board data required'}), 400
+        # 计算红方视角评分
+        board_str = "".join(["".join(row) for row in web_board])
+        is_red_turn = current_player == 'red'
+        score_relative = cppjieqi.get_board_evaluation(board_str, is_red_turn, len(history))
+        score_for_red = score_relative if is_red_turn else -score_relative
+        # 转为 WDL 概率
+        wdl = ai_engine._score_to_wdl(score_for_red, move_count=len(history))
+        # 当前走子方胜率（视角）
+        current_winrate = wdl['red_win'] if current_player == 'red' else wdl['black_win']
+        return jsonify({
+            'success': True,
+            'score_for_red': score_for_red,
+            'wdl': wdl,
+            'current_player': current_player,
+            'current_player_winrate': round(current_winrate, 4)
+        })
+    except Exception as e:
+        print(f"Win probability error: {e}")
+        return jsonify({'success': False, 'error': f'WDL error: {str(e)}'}), 500
 
 @app.route('/api/game-status', methods=['GET'])
 def game_status():

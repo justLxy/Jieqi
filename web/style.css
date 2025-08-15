@@ -1147,3 +1147,26 @@ input:checked + .slider:before {
     -webkit-appearance: none;
     margin: 0;
 }
+
+.wdl-summary {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    row-gap: 6px;
+    column-gap: 10px;
+    margin-bottom: 10px;
+}
+.wdl-row span { color: #555; }
+.wdl-row strong { color: #111; }
+
+.wdl-bar {
+    display: flex;
+    width: 100%;
+    height: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid #ccc;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+}
+.wdl-red { background:#d32f2f; height:100%; }
+.wdl-draw { background:#9e9e9e; height:100%; }
+.wdl-black { background:#424242; height:100%; }
