@@ -172,7 +172,7 @@ def ai_recommendation():
             }), 400
 
         # 从请求中获取depth参数，如果没有则使用默认值
-        depth = data.get('depth', 8)
+        depth = data.get('depth', 9)
         
         # 调用 get_ai_recommendation 辅助函数
         recommendation = ai_engine.get_ai_recommendation(web_board, current_player, history, depth)

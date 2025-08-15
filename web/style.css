@@ -1096,3 +1096,29 @@ input:checked + .slider:before {
         width: 200px;
     }
 }
+
+.ai-depth-setting input[type="number"] {
+    width: 60px;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #fff;
+    color: #333;
+    font-size: 14px;
+    text-align: center;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    -moz-appearance: textfield; /* Firefox */
+}
+
+.ai-depth-setting input[type="number"]:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 5px rgba(0,123,255,0.5);
+}
+
+.ai-depth-setting input[type="number"]::-webkit-outer-spin-button,
+.ai-depth-setting input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
