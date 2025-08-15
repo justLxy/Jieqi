@@ -753,12 +753,13 @@ class Searcher:
         self.nodes = 0
 
     def quiescence(self, pos, moves, oppo):
-        score = 0
         maxscore = 0
         oppo_rooted_set = oppo.rooted()
         oppo_rooted_set = set(map(lambda x: 254-x, oppo_rooted_set)) #对方有根子
         argmax = None
         for move in moves:
+            # 逐一计算每个吃子走法的静态收益，不能跨走法累计
+            score = 0
             p = pos.board[move[0]]
             q = pos.board[move[1]]
             if q == '.':
@@ -1172,14 +1173,16 @@ class Searcher:
 
         # In finished games, we could potentially go far enough to cause a recursion
         # limit exception. Hence we bound the ply.
+        start = time.time()
+        # 逐层加深，按时间限制提前停止
         for depth in range(5, 6):
-            # The inner loop is a binary search on the score of the position.
-            # Inv: lower <= score <= upper
-            # 'while lower != upper' would work, but play tests show a margin of 20 plays
-            # better.
+            if time.time() - start > THINK_TIME:
+                break
             lower, upper = -MATE_UPPER, MATE_UPPER
-            val = self.alphabeta(pos, lower, upper, depth, nullmove=NULLMOVE, nullmove_now=NULLMOVE)
+            _ = self.alphabeta(pos, lower, upper, depth, nullmove=NULLMOVE, nullmove_now=NULLMOVE)
             yield depth, self.tp_move.get(pos), self.tp_score.get((pos, depth, True), Entry(-MATE_UPPER, MATE_UPPER)).lower
+            if time.time() - start > THINK_TIME:
+                break
 
     @staticmethod
     def setdepth(new_depths):
