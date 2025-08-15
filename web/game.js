@@ -69,6 +69,7 @@ class JieqiGame {
         
         // 等待暗子选择的状态
         this.pendingDarkPieceSelection = null;
+        this.isAIThinking = false; // 新增：AI思考状态锁
     }
 
     createInitialBoard() {
@@ -1561,6 +1562,9 @@ class JieqiGame {
             const targetPlayer = playerType === 'current' ? this.gameState.currentPlayer : playerType;
             this.aiRecommendationElement.innerHTML = `<p>正在获取${targetPlayer === 'red' ? '红方' : '黑方'}AI推荐...</p>`;
             
+            // 读取AI深度设置
+            const aiDepth = parseInt(document.getElementById('aiDepth').value, 10) || 8;
+
             // 发送棋盘状态到后端AI
             const response = await fetch('http://localhost:8000/api/ai-recommendation', {
                 method: 'POST',
@@ -1571,7 +1575,7 @@ class JieqiGame {
                     board: this.gameState.board,
                     currentPlayer: targetPlayer,
                     history: this.gameState.gameHistory,
-                    boardFlipped: this.boardFlipped // 新增：发送棋盘翻转状态
+                    depth: aiDepth // 发送深度参数
                 })
             });
             
@@ -1592,12 +1596,15 @@ class JieqiGame {
         } catch (error) {
             this.aiRecommendationElement.innerHTML = `<p style="color: #e74c3c;">获取AI推荐失败: ${error.message}</p>`;
             this.showMessage('获取AI推荐失败', 'error');
+        } finally {
+            this.isAIThinking = false; // 无论成功或失败，都释放思考锁
         }
     }
 
     async getBothPlayerRecommendations() {
         try {
             // 同时获取红方和黑方的推荐
+            const aiDepth = parseInt(document.getElementById('aiDepth').value, 10) || 8;
             const [redResponse, blackResponse] = await Promise.all([
                 fetch('http://localhost:8000/api/ai-recommendation', {
                     method: 'POST',
@@ -1605,7 +1612,8 @@ class JieqiGame {
                     body: JSON.stringify({
                         board: this.gameState.board,
                         currentPlayer: 'red',
-                        history: this.gameState.gameHistory
+                        history: this.gameState.gameHistory,
+                        depth: aiDepth
                     })
                 }),
                 fetch('http://localhost:8000/api/ai-recommendation', {
@@ -1614,7 +1622,8 @@ class JieqiGame {
                     body: JSON.stringify({
                         board: this.gameState.board,
                         currentPlayer: 'black',
-                        history: this.gameState.gameHistory
+                        history: this.gameState.gameHistory,
+                        depth: aiDepth
                     })
                 })
             ]);
@@ -1895,9 +1904,13 @@ class JieqiGame {
 
     // 新增：检查并触发AI走棋
     triggerAIMove() {
+        if (this.isAIThinking) {
+            return; // 如果AI正在思考，则阻止新的AI请求
+        }
         const currentPlayer = this.gameState.currentPlayer;
         if (this.isAIActive(currentPlayer) && !this.gameState.isGameOver) {
             this.showMessage(`${currentPlayer === 'red' ? '红方' : '黑方'}AI正在思考...`, 'info');
+            this.isAIThinking = true; // 设置思考锁
             // 延迟一小段时间，让UI更新
             setTimeout(() => {
                 this.getAIRecommendation(currentPlayer);

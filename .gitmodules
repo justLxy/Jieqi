@@ -1,0 +1,4 @@
+[submodule "cppjieqi2/pybind11"]
+	path = cppjieqi2/pybind11
+	url = https://github.com/pybind/pybind11.git
+	branch = stable
