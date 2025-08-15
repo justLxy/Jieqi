@@ -2,7 +2,7 @@
 #include <pybind11/stl.h> // Include for automatic type conversion
 #include <vector>
 #include "board/board.h"
-#include "board/aiboard4.h"
+#include "board/aiboard5.h"
 #include "global/global.h"
 #include <iostream>
 #include <string>
@@ -29,9 +29,9 @@ public:
         std::lock_guard<std::mutex> lock(mtx);
         uint64_t id = ++last_id;
         char initial_state[257] = {0};
-        unsigned char di[VERSION_MAX][2][123] = {0};
+        unsigned char di[VERSION_MAX][2][123] = {{{0}}};
         histories[id] = std::make_unique<std::unordered_map<std::string, bool>>();
-        boards[id] = std::make_unique<board::AIBoard4>(initial_state, true, 0, di, 0, tptable.data(), histories[id].get());
+        boards[id] = std::make_unique<board::AIBoard5>(initial_state, true, 0, di, 0, histories[id].get());
         return id;
     }
 
@@ -41,7 +41,7 @@ public:
         histories.erase(id);
     }
 
-    board::AIBoard4* get_board(uint64_t id) {
+    board::AIBoard5* get_board(uint64_t id) {
         std::lock_guard<std::mutex> lock(mtx);
         auto it = boards.find(id);
         if (it != boards.end()) {
@@ -53,7 +53,7 @@ public:
 private:
     std::mutex mtx;
     uint64_t last_id;
-    std::unordered_map<uint64_t, std::unique_ptr<board::AIBoard4>> boards;
+    std::unordered_map<uint64_t, std::unique_ptr<board::AIBoard5>> boards;
     std::unordered_map<uint64_t, std::unique_ptr<std::unordered_map<std::string, bool>>> histories;
 };
 
@@ -61,16 +61,16 @@ AIManager ai_manager;
 
 // Function to initialize necessary components
 void initialize_engine() {
-    std::lock_guard<std::mutex> lock(tptable_mutex);
-    if (tptable.empty()) {
-        try {
-            tptable.resize(MAX_ZOBRIST);
-        } catch (const std::bad_alloc& e) {
-            std::cerr << "Failed to allocate transposition table: " << e.what() << std::endl;
-            // Handle allocation failure, maybe by trying a smaller size or exiting.
-            return;
-        }
-    }
+    // No longer needed for AIBoard5 as it seems to manage its own memory or doesn't use a global tptable
+    // std::lock_guard<std::mutex> lock(tptable_mutex);
+    // if (tptable.empty()) {
+    //     try {
+    //         tptable.resize(MAX_ZOBRIST);
+    //     } catch (const std::bad_alloc& e) {
+    //         std::cerr << "Failed to allocate transposition table: " << e.what() << std::endl;
+    //         return;
+    //     }
+    // }
     IntializeL1();
     memset(pstglobal, 0, sizeof(pstglobal));
     // It's better to load the score table once
@@ -80,7 +80,7 @@ void initialize_engine() {
 }
 
 void set_board(uint64_t game_id, const std::string& board_json_str, bool is_red_turn, int history_len) {
-    board::AIBoard4* ai_board_instance = ai_manager.get_board(game_id);
+    board::AIBoard5* ai_board_instance = ai_manager.get_board(game_id);
     if (!ai_board_instance) {
         return; // Or handle error
     }
@@ -100,11 +100,11 @@ void set_board(uint64_t game_id, const std::string& board_json_str, bool is_red_
     memcpy(setup_board.state_black, setup_board.state_red, 257);
     setup_board.rotate(setup_board.state_black);
     
-    // These methods belong to Board, not AIBoard4
+    // These methods belong to Board, not AIBoard5
     setup_board.GenerateRandomMap();
     setup_board.initialize_di();
 
-    // Now, transfer the state to the persistent AIBoard4 instance
+    // Now, transfer the state to the persistent AIBoard5 instance
     ai_board_instance->turn = is_red_turn;
     ai_board_instance->round = history_len / 2;
     memcpy(ai_board_instance->state_red, setup_board.state_red, 257);
@@ -122,7 +122,7 @@ void set_board(uint64_t game_id, const std::string& board_json_str, bool is_red_
 }
 
 std::string get_ai_move_stateful(uint64_t game_id, int depth) {
-    board::AIBoard4* thinker = ai_manager.get_board(game_id);
+    board::AIBoard5* thinker = ai_manager.get_board(game_id);
     if (!thinker) {
         return "ERROR:Invalid game ID";
     }
@@ -161,7 +161,7 @@ std::string get_ai_move_stateful(uint64_t game_id, int depth) {
 }
 
 int get_board_evaluation_stateful(uint64_t game_id) {
-    board::AIBoard4* board_eval = ai_manager.get_board(game_id);
+    board::AIBoard5* board_eval = ai_manager.get_board(game_id);
      if (!board_eval) {
         return 0; // Or some error code
     }

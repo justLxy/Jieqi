@@ -1622,8 +1622,7 @@ class JieqiGame {
             const targetPlayer = playerType === 'current' ? this.gameState.currentPlayer : playerType;
             this.aiRecommendationElement.innerHTML = `<p>正在获取${targetPlayer === 'red' ? '红方' : '黑方'}AI推荐...</p>`;
             
-            // 读取AI深度设置
-            const aiDepth = parseInt(document.getElementById('aiDepth').value, 10) || 9;
+            const aiDepth = 9; // AI depth is now fixed in the backend
 
             // 发送棋盘状态到后端AI
             const response = await fetch('http://localhost:8000/api/ai-recommendation', {
@@ -1664,7 +1663,7 @@ class JieqiGame {
     async getBothPlayerRecommendations() {
         try {
             // 同时获取红方和黑方的推荐
-            const aiDepth = parseInt(document.getElementById('aiDepth').value, 10) || 9;
+            const aiDepth = 9; // AI depth is now fixed in the backend
             const [redResponse, blackResponse] = await Promise.all([
                 fetch('http://localhost:8000/api/ai-recommendation', {
                     method: 'POST',

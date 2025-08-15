@@ -101,7 +101,7 @@ board::AIBoard5::AIBoard5() noexcept:
     memset(state_black, 0, sizeof(state_black));
     strncpy(state_red, _initial_state, _chess_board_size);
     strncpy(state_black, _initial_state, _chess_board_size);
-    copy_pst(this -> pst, ::pstglobal[4]);
+    copy_pst(this -> pst, ::pstglobal[3]);
     _initialize_dir();
     _initialize_zobrist();
     zobrist_cache.insert((zobrist_hash << 1)|original_turn);
@@ -111,15 +111,24 @@ board::AIBoard5::AIBoard5() noexcept:
     _has_initialized = true;
 }
 
+void board::AIBoard5::Reset() noexcept {
+    zobrist_hash = 0;
+    _initialize_zobrist();
+    zobrist_cache.clear();
+    zobrist_cache.insert((zobrist_hash << 1)|original_turn);
+}
 
-board::AIBoard5::AIBoard5(const char another_state[MAX], bool turn, int round, const unsigned char di[VERSION_MAX][2][123], short score, std::unordered_map<std::string, bool>* hist) noexcept: 
+board::AIBoard5::AIBoard5(const char another_state[MAX], bool turn, int round, const unsigned char di[VERSION_MAX][2][123], short score, std::unordered_map<std::string, bool>* hist) noexcept:
                                                                                                                             lastinsert(false),
-                                                                                                                            version(0), 
-                                                                                                                            round(round), 
-                                                                                                                            turn(turn), 
+                                                                                                                            version(0),
+                                                                                                                            round(round),
+                                                                                                                            turn(turn),
                                                                                                                             original_turn(turn),
-                                                                                                                            zobrist_hash(0), 
+                                                                                                                            original_depth(0),
+                                                                                                                            zobrist_hash(0),
                                                                                                                             score(score),
+                                                                                                                            tp_move(&tp_move_bean[0]),
+                                                                                                                            tp_score(&tp_score_bean[0]),
                                                                                                                             hist(hist),
                                                                                                                             _kaijuku_file("../kaijuku"),
                                                                                                                             _myname("AI5"),
@@ -141,7 +150,7 @@ board::AIBoard5::AIBoard5(const char another_state[MAX], bool turn, int round, c
     }else{
         rotate(state_red);
     }
-    copy_pst(this -> pst, ::pstglobal[4]);
+    copy_pst(this -> pst, ::pstglobal[3]);
     CopyData(di);
     _initialize_dir();
     _initialize_zobrist();
@@ -823,7 +832,7 @@ std::string board::AIBoard5::Kaiju(){
 }
 
 std::string board::AIBoard5::Think(int maxdepth){
-    (void)maxdepth;
+    (void)maxdepth; // Ignore the depth from python
     SetScoreFunction("mtd_thinker5", 2);
     return round == 0 ? Kaiju() : _thinker_func(this);
 }
