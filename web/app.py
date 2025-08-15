@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # 导入现有的AI引擎
 try:
     from board import board
-    from board import common_20210604_fixed as common
+    from board import common_20210815 as common
     
     # 导入 musesfish AI 引擎
     import musesfish_pvs_exp as musesfish
@@ -181,7 +181,7 @@ class WebJieqiAI:
 
             # 4. 调用 musesfish 引擎生成禁着
             # 这会使用全局的 cache，并更新全局的 forbidden_moves
-            forbidden_moves = musesfish.generate_forbiddenmoves(position)
+            forbidden_moves = musesfish.generate_forbiddenmoves(position, current_player=current_player)
             # --- 逻辑修改结束 ---
 
             self._last_forbidden_count = len(forbidden_moves)
@@ -277,6 +277,10 @@ class WebJieqiAI:
             # 添加强制走法警告
             if hasattr(self, '_forced_move_warning') and self._forced_move_warning:
                 details.append("⚠️ 警告: 所有走法都会重复局面，已选择最佳走法")
+            
+            # 添加开局库提示
+            if hasattr(self.searcher, 'from_kaijuku') and self.searcher.from_kaijuku:
+                details.append("📚 此步棋来自开局库，无需计算")
             
             if best_score > 500:
                 details.append("这步棋有很大优势")
@@ -380,19 +384,20 @@ class WebJieqiAI:
             print(f"更新AI棋子知识失败: {e}")
     
     def get_initial_board(self):
-        """获取初始棋盘状态"""
-        # 标准暗棋初始布局
+        """获取初始棋盘状态，与musesfish的initial_covered布局匹配"""
+        # 对应musesfish initial_covered的标准暗棋初始布局
+        # musesfish棋盘行号3-12对应web棋盘行号0-9
         initial = [
-            ['D', 'E', 'F', 'G', 'H', 'F', 'E', 'D', '.'],
-            ['I', 'I', 'I', 'I', 'I', 'I', 'I', 'I', '.'],
-            ['.', '.', '.', '.', '.', '.', '.', '.', '.'],
-            ['.', '.', '.', '.', '.', '.', '.', '.', '.'],
-            ['.', '.', '.', '.', '.', '.', '.', '.', '.'],
-            ['.', '.', '.', '.', '.', '.', '.', '.', '.'],
-            ['.', '.', '.', '.', '.', '.', '.', '.', '.'],
-            ['.', '.', '.', '.', '.', '.', '.', '.', '.'],
-            ['i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', '.'],
-            ['d', 'e', 'f', 'g', 'h', 'f', 'e', 'd', '.']
+            ['d', 'e', 'f', 'g', 'k', 'g', 'f', 'e', 'd'],  # 第3行：黑方底线
+            ['.', '.', '.', '.', '.', '.', '.', '.', '.'],   # 第4行：空行
+            ['.', 'h', '.', '.', '.', '.', '.', 'h', '.'],   # 第5行：黑炮
+            ['i', '.', 'i', '.', 'i', '.', 'i', '.', 'i'],   # 第6行：黑兵
+            ['.', '.', '.', '.', '.', '.', '.', '.', '.'],   # 第7行：空行
+            ['.', '.', '.', '.', '.', '.', '.', '.', '.'],   # 第8行：空行
+            ['I', '.', 'I', '.', 'I', '.', 'I', '.', 'I'],   # 第9行：红兵
+            ['.', 'H', '.', '.', '.', '.', '.', 'H', '.'],   # 第10行：红炮
+            ['.', '.', '.', '.', '.', '.', '.', '.', '.'],   # 第11行：空行
+            ['D', 'E', 'F', 'G', 'K', 'G', 'F', 'E', 'D']   # 第12行：红方底线
         ]
         return [row[:] for row in initial]  # 深拷贝
     

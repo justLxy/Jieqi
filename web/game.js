@@ -213,18 +213,18 @@ class JieqiGame {
     }
 
     handleSquareClick(row, col, event) {
-        console.log(`点击了显示坐标 (${row}, ${col})`);
+        // 从事件目标获取最新的逻辑坐标
+        const targetSquare = event.currentTarget;
+        const logicRow = parseInt(targetSquare.dataset.row, 10);
+        const logicCol = parseInt(targetSquare.dataset.col, 10);
+
+        console.log(`点击了显示坐标 (${row}, ${col}) -> 逻辑坐标 (${logicRow}, ${logicCol})`);
         
         // 如果正在等待暗子选择，阻止棋盘操作
         if (this.pendingDarkPieceSelection) {
             this.showMessage('请先在右侧选择暗子类型', 'warning');
             return;
         }
-        
-        // 将显示坐标转换为逻辑坐标
-        const logicRow = this.boardFlipped ? 9 - row : row;
-        const logicCol = this.boardFlipped ? 8 - col : col;
-        console.log(`转换为逻辑坐标 (${logicRow}, ${logicCol})`);
         
         const piece = this.gameState.board[logicRow][logicCol];
         console.log(`格子上的棋子: ${piece}`);
@@ -1570,7 +1570,8 @@ class JieqiGame {
                 body: JSON.stringify({
                     board: this.gameState.board,
                     currentPlayer: targetPlayer,
-                    history: this.gameState.gameHistory
+                    history: this.gameState.gameHistory,
+                    boardFlipped: this.boardFlipped // 新增：发送棋盘翻转状态
                 })
             });
             

@@ -79,6 +79,9 @@ initial_covered = (
     '                '  # 15
 )
 
+# 手动添加初始局面到开局库
+kaijuku[initial_covered] = (155, 139)  # 使用与第一个条目相同的走法
+
 bug = (
     '               \n'  # 0
     '               \n'  # 1
@@ -158,7 +161,7 @@ TABLE_SIZE = 1e7
 QS_LIMIT = 219
 EVAL_ROUGHNESS = 13
 DRAW_TEST = True
-THINK_TIME = 10
+THINK_TIME = 8
 THRESHOLD = 150
 
 
@@ -751,6 +754,7 @@ class Searcher:
         self.result_dict = {}
         self.history = set()
         self.nodes = 0
+        self.from_kaijuku = False
 
     def quiescence(self, pos, moves, oppo):
         maxscore = 0
@@ -1162,6 +1166,15 @@ class Searcher:
 
     def search(self, pos, history=()):
         """ Iterative deepening MTD-bi search """
+        if pos.board in kaijuku:
+            move = kaijuku[pos.board]
+            print(f"AI: 使用开局库走法 {move}")
+            # 标记这一步来自开局库
+            self.from_kaijuku = True
+            yield 4, move, self.tp_score.get((pos, 4, True), Entry(-MATE_UPPER, MATE_UPPER)).lower
+            return
+        # 如果不是开局库走法，清除标记
+        self.from_kaijuku = False
         self.nodes = 0
         self.calc_average()
         print("AI: I think my score is %d" % pos.score_rough)
@@ -1303,7 +1316,7 @@ def translate_eat(eat, dst, turn, type):
             return dst
 
 
-def generate_forbiddenmoves(pos, check_bozi=True, step=0):
+def generate_forbiddenmoves(pos, check_bozi=True, step=0, current_player='red'):
     # 生成禁着
     # 这里禁着判断比较简单，如果走了这步棋以后形成的局面在过往局面中已经出现2次或以上，则不允许电脑走这步棋（防止长将）。
     # 这里的pos是电脑视角
@@ -1313,7 +1326,20 @@ def generate_forbiddenmoves(pos, check_bozi=True, step=0):
     moves = pos.gen_moves()
     for move in moves:
         posnew = pos.move(move)
-        if cache.get(posnew.board, 0) >= 2:
+        
+        # The cache is always keyed by boards from red's perspective (canonical).
+        # We need to get the canonical representation of the board after the move.
+        # posnew is from the opponent's perspective.
+        if current_player == 'red':
+            # AI is red, opponent is black. posnew is from black's perspective.
+            # We must rotate it to get red's perspective for the cache lookup.
+            board_to_check = posnew.rotate().board
+        else: # current_player == 'black'
+            # AI is black, opponent is red. posnew is from red's perspective.
+            # This is the canonical form for the cache.
+            board_to_check = posnew.board
+
+        if cache.get(board_to_check, 0) >= 1:
             forbidden_moves.add(move)
         if check_bozi:
             i, j = move
