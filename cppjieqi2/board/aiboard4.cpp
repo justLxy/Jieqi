@@ -336,10 +336,27 @@ void board::AIBoard4::Scan(){
     kongtoupao_opponent = 0;
     kongtoupao_score = 0;
     kongtoupao_score_opponent=0;
+    score = 0; // Initialize score
     const char *_state_pointer = turn?state_red:state_black;
     for(int i = 51; i <= 203; ++i){
         if((i & 15) < 3 || (i & 15) > 11) { continue; }
         const char p = _state_pointer[i];
+
+        // Calculate material and positional score
+        if (p >= 'A' && p <= 'P') { // Red pieces (from current perspective)
+            score += pst[(int)p][i];
+        } else if (p >= 'a' && p <= 'p') { // Black pieces
+            score -= pst[(int)swapcase(p)][reverse(i)];
+        } else if (p == 'U') { // Unknown piece (yours)
+            score += aiaverage[version][turn][1][i];
+        } else if (p == 'u') { // Unknown piece (opponent's)
+            score -= aiaverage[version][!turn][1][reverse(i)];
+        } else if (p >= 'D' && p <= 'I') { // Your dark piece
+            score += aiaverage[version][turn][0][0];
+        } else if (p >= 'd' && p <= 'i') { // Opponent's dark piece
+            score -= aiaverage[version][!turn][0][0];
+        }
+
         if(p != '.'){
             ++all;
         }

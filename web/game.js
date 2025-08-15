@@ -972,14 +972,15 @@ class JieqiGame {
     // 局面评估
     async evaluateCurrentPosition() {
         try {
-            const response = await fetch('http://localhost:8000/api/position-evaluation', {
+            const response = await fetch('/api/position-evaluation', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
                     board: this.gameState.board,
-                    currentPlayer: this.gameState.currentPlayer
+                    currentPlayer: this.gameState.currentPlayer,
+                    history: this.gameState.gameHistory
                 })
             });
 
@@ -1007,9 +1008,7 @@ class JieqiGame {
             evaluationElement = document.getElementById('positionEvaluation');
         }
 
-        const { score, evaluation: evalText, advantage, details } = evaluation;
-        const barColor = advantage.side === 'red' ? '#d32f2f' : 
-                        advantage.side === 'black' ? '#424242' : '#2196f3';
+        const { score, evaluation: evalText, advantage } = evaluation;
         
         evaluationElement.innerHTML = `
             <h4>📊 局面评估</h4>
@@ -1017,21 +1016,9 @@ class JieqiGame {
                 <div class="evaluation-text">${evalText}</div>
                 <div class="evaluation-score">评分: ${score > 0 ? '+' : ''}${score}</div>
             </div>
-            <div class="advantage-bar">
-                <div class="advantage-progress" style="
-                    width: ${advantage.percentage}%; 
-                    background: ${barColor};
-                    height: 6px;
-                    border-radius: 3px;
-                    transition: all 0.3s ease;
-                "></div>
-            </div>
-            <div class="evaluation-details">
-                <small>
-                    子力: ${details.material_balance.red_material} vs ${details.material_balance.black_material} |
-                    机动性: ${details.mobility_factor.available_moves}手 |
-                    控制: ${details.control_evaluation.total_control}
-                </small>
+            <div class="advantage-bar" title="${evalText} (红方 ${advantage.percentage.toFixed(1)}%)">
+                <div class="advantage-red" style="width: ${advantage.percentage}%"></div>
+                <div class="advantage-black" style="width: ${100 - advantage.percentage}%"></div>
             </div>
         `;
     }

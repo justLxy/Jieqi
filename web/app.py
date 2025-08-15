@@ -12,6 +12,7 @@ import json
 import time
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+import math
 
 # 导入新的 C++ AI 引擎
 try:
@@ -125,15 +126,62 @@ class WebJieqiAI:
                 'error': f'AI error: {str(e)}'
             }
 
-    def evaluate_position(self, web_board, current_player):
-        """评估当前局面 (简化)"""
-        return {
-            'success': True,
-            'score': 0,
-            'evaluation': "评估功能待集成",
-            'details': {},
-            'advantage': {'level': 'balanced', 'side': 'none', 'percentage': 50}
-        }
+    def evaluate_position(self, web_board, current_player, history):
+        """评估当前局面"""
+        if not AI_AVAILABLE:
+            return {
+                'success': False,
+                'error': 'AI engine not available'
+            }
+        try:
+            board_str = "".join(["".join(row) for row in web_board])
+            is_red_turn = current_player == 'red'
+            
+            # C++引擎返回相对于当前玩家的分数
+            score_relative = cppjieqi.get_board_evaluation(board_str, is_red_turn, len(history))
+
+            # 将分数统一转换为红方视角
+            score_for_red = score_relative if is_red_turn else -score_relative
+
+            # 根据红方分数判断局面
+            advantage_level = "balanced"
+            advantage_side = "none"
+            evaluation_text = "均势"
+
+            if score_for_red > 200:
+                advantage_level = "decisive_advantage"
+                advantage_side = "red"
+                evaluation_text = "红方巨大优势"
+            elif score_for_red > 50:
+                advantage_level = "slight_advantage"
+                advantage_side = "red"
+                evaluation_text = "红方优势"
+            elif score_for_red < -200:
+                advantage_level = "decisive_advantage"
+                advantage_side = "black"
+                evaluation_text = "黑方巨大优势"
+            elif score_for_red < -50:
+                advantage_level = "slight_advantage"
+                advantage_side = "black"
+                evaluation_text = "黑方优势"
+            
+            # 将分数映射到0-100的百分比，用于优势条显示
+            # 使用tanh函数使分数在极端情况下变化更平滑
+            percentage_red = 50 + 25 * math.tanh(score_for_red / 400.0)
+            percentage = max(5, min(95, percentage_red))
+
+            return {
+                'success': True,
+                'score': score_for_red,
+                'evaluation': evaluation_text,
+                'advantage': {'level': advantage_level, 'side': advantage_side, 'percentage': percentage}
+            }
+        except Exception as e:
+            print(f"Position evaluation error: {e}")
+            return {
+                'success': False,
+                'error': f'Evaluation error: {str(e)}'
+            }
 
 
 # 创建AI实例
@@ -203,6 +251,7 @@ def position_evaluation():
         
         web_board = data.get('board')
         current_player = data.get('currentPlayer', 'red')
+        history = data.get('history', [])
         
         if not web_board:
             return jsonify({
@@ -210,7 +259,7 @@ def position_evaluation():
                 'error': 'Board data required'
             }), 400
         
-        evaluation = ai_engine.evaluate_position(web_board, current_player)
+        evaluation = ai_engine.evaluate_position(web_board, current_player, history)
         
         return jsonify(evaluation)
         

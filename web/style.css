@@ -1097,6 +1097,31 @@ input:checked + .slider:before {
     }
 }
 
+.advantage-bar {
+    display: flex;
+    width: 100%;
+    height: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+    background-color: #e0e0e0;
+    margin-top: 10px;
+    border: 1px solid #ccc;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.advantage-red {
+    background-color: #d32f2f;
+    height: 100%;
+    transition: width 0.5s ease-in-out;
+    border-right: 1px solid rgba(0,0,0,0.2);
+}
+
+.advantage-black {
+    background-color: #424242;
+    height: 100%;
+    transition: width 0.5s ease-in-out;
+}
+
 .ai-depth-setting input[type="number"] {
     width: 60px;
     padding: 8px;

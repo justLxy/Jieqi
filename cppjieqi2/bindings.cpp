@@ -107,6 +107,58 @@ std::string get_ai_move(const std::string& board_json_str, bool is_red_turn, int
     return best_move_ucci;
 }
 
+int get_board_evaluation(const std::string& board_json_str, bool is_red_turn, int history_len) {
+    // This function provides a static evaluation of the board state without performing a deep search.
+    board::Board board_instance;
+    board_instance.turn = is_red_turn;
+    board_instance.round = history_len / 2;
+
+    for (int r = 0; r < 10; ++r) {
+        for (int c = 0; c < 9; ++c) {
+            int internal_pos = board_instance.translate_x_y(r, c);
+            char piece = board_json_str[r * 9 + c];
+            board_instance.state_red[internal_pos] = piece;
+        }
+    }
+
+    memcpy(board_instance.state_black, board_instance.state_red, 257);
+    board_instance.rotate(board_instance.state_black);
+
+    board_instance.GenerateRandomMap();
+    board_instance.initialize_di();
+
+    std::unique_ptr<board::AIBoard4> board_eval;
+    if (is_red_turn) {
+        board_eval.reset(new board::AIBoard4(
+            board_instance.state_red,
+            board_instance.turn,
+            board_instance.round,
+            board_instance.di_red,
+            0, tptable, &board_instance.hist
+        ));
+    } else {
+        board_eval.reset(new board::AIBoard4(
+            board_instance.state_black,
+            board_instance.turn,
+            board_instance.round,
+            board_instance.di_black,
+            0, tptable, &board_instance.hist
+        ));
+    }
+
+    if (!board_eval) {
+        return 0; // Or some error code
+    }
+
+    // Scan() calculates the static scores.
+    board_eval->Scan();
+
+    // The score is relative to the current player.
+    // A positive score is good for the current player.
+    return board_eval->score + board_eval->kongtoupao_score - board_eval->kongtoupao_score_opponent;
+}
+
+
 PYBIND11_MODULE(cppjieqi, m) {
     m.doc() = "pybind11 plugin for Jieqi AI engine";
     
@@ -116,4 +168,8 @@ PYBIND11_MODULE(cppjieqi, m) {
           pybind11::arg("is_red_turn"), 
           pybind11::arg("history_len"), 
           pybind11::arg("depth") = 8);
+    m.def("get_board_evaluation", &get_board_evaluation, "Gets the static evaluation of the board",
+            pybind11::arg("board_str"),
+            pybind11::arg("is_red_turn"),
+            pybind11::arg("history_len"));
 }
