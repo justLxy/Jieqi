@@ -166,9 +166,22 @@ int get_board_evaluation_stateful(uint64_t game_id) {
         return 0; // Or some error code
     }
 
+    bool original_turn = board_eval->turn; // Save the original turn
+    board_eval->turn = true; // Force red's perspective for evaluation
+    
     board_eval->Scan();
 
-    return board_eval->score + board_eval->kongtoupao_score - board_eval->kongtoupao_score_opponent;
+    // Use score_rough, which is calculated by Scan(), not the dynamic 'score' member.
+    int score_val = board_eval->score_rough + board_eval->kongtoupao_score - board_eval->kongtoupao_score_opponent;
+    
+    board_eval->turn = original_turn; // Restore the original turn
+    
+    // The score from Scan() is from red's perspective. If it's black's turn, negate it.
+    if (!original_turn) {
+        score_val = -score_val;
+    }
+    
+    return score_val;
 }
 
 
