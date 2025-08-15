@@ -8,9 +8,10 @@
 #include <string>
 
 // Forward declaration of necessary functions from the codebase
-extern bool read_score_table(const char* score_file, short pst[][256]);
-extern void IntializeL1();
 extern short pstglobal[5][123][256];
+extern unsigned char L1[256][256];
+extern bool read_score_table(const char* score_file, short pst[123][256]);
+extern void IntializeL1();
 
 // Global transposition table
 tp* tptable = nullptr;

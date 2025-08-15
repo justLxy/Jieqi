@@ -107,7 +107,7 @@ public:
     std::unordered_map<std::string, bool>* hist;
     std::unordered_map<std::string, std::pair<unsigned char, unsigned char>> kaijuku;
     AIBoard5() noexcept;
-    AIBoard5(const char another_state[MAX], bool turn, int round, const unsigned char di[5][2][123], short score, std::unordered_map<std::string, bool>* hist) noexcept;
+    AIBoard5(const char another_state[MAX], bool turn, int round, const unsigned char di[VERSION_MAX][2][123], short score, std::unordered_map<std::string, bool>* hist) noexcept;
     AIBoard5(const AIBoard5& another_board) = delete;
     virtual ~AIBoard5()=default;
     void Reset() noexcept;
@@ -128,9 +128,9 @@ public:
     bool Executed(bool* oppo_mate, std::tuple<short, unsigned char, unsigned char> legal_moves_tmp[], int num_of_legal_moves_tmp, bool calc);
     bool ExecutedDebugger(bool *oppo_mate);
     bool Ismate_After_Move(unsigned char src, unsigned char dst);
-    void CopyData(const unsigned char di[5][2][123]);
+    void CopyData(const unsigned char di[VERSION_MAX][2][123]);
     std::string Kaiju();
-    virtual std::string Think();
+    virtual std::string Think(int maxdepth) override;
     void PrintPos(bool turn) const;
     std::string DebugPrintPos(bool turn) const;
     void print_raw_board(const char* board, const char* hint);
@@ -241,19 +241,9 @@ public:
     };
 
     std::function<uint32_t(void)> randU32 = []() -> uint32_t{
-	   //BUG: 在Windows上每次生成同样的随机数
-	   #ifdef WIN32
-	   //Windows RAND_MAX 0x7fff
-	   int a = rand();
-	   unsigned b = ((a & 1) << 15) | a; //符号位随机
-	   int c = rand();
-	   unsigned d = ((c & 1) << 15) | c; //符号位随机
-	   return (b << 16) | d;
-	   #else
-       std::mt19937 gen(std::random_device{}());
+       std::mt19937 gen(std::chrono::high_resolution_clock::now().time_since_epoch().count());
        uint32_t randomNumber = gen();
        return randomNumber;
-	   #endif
     };
 
 private:

@@ -822,7 +822,8 @@ std::string board::AIBoard5::Kaiju(){
     return "";
 }
 
-std::string board::AIBoard5::Think(){
+std::string board::AIBoard5::Think(int maxdepth){
+    (void)maxdepth;
     SetScoreFunction("mtd_thinker5", 2);
     return round == 0 ? Kaiju() : _thinker_func(this);
 }

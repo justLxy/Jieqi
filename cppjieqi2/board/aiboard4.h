@@ -282,7 +282,7 @@ public:
     std::unordered_map<std::pair<uint64_t, int>, debugtuple, myhash<uint64_t, int>> moves;
     std::unordered_map<uint64_t, std::unordered_set<std::string>> banned;
     AIBoard4()=delete;
-    AIBoard4(const char another_state[MAX], bool turn, int round, const unsigned char di[5][2][123], short score, tp* tptable, std::unordered_map<std::string, bool>* hist) noexcept;
+    AIBoard4(const char another_state[MAX], bool turn, int round, const unsigned char di[VERSION_MAX][2][123], short score, tp* tptable, std::unordered_map<std::string, bool>* hist) noexcept;
     AIBoard4(const AIBoard4& another_board) = delete;
     virtual ~AIBoard4()=default;
     void Reset() noexcept;
@@ -304,7 +304,7 @@ public:
     bool ExecutedDebugger(bool *oppo_mate);
     bool Ismate_After_Move(unsigned char src, unsigned char dst);
     void CalcVersion(const int ver);
-    void CopyData(const unsigned char di[5][2][123]);
+    void CopyData(const unsigned char di[VERSION_MAX][2][123]);
     virtual std::string Think(int maxdepth);
     void PrintPos(bool turn) const;
     std::string DebugPrintPos() const;
@@ -418,7 +418,6 @@ public:
     };
 
     std::function<uint64_t(void)> randU64 = []() -> uint64_t{
-	   //BUG: 在Windows上每次生成同样的随机数
        std::mt19937_64 gen(std::chrono::high_resolution_clock::now().time_since_epoch().count());
        uint64_t randomNumber = gen();
        return randomNumber;
@@ -534,7 +533,7 @@ public:
             debugtuple score;
             if(moves.find({zobrist_hash, MIX(ply, depth)}) == moves.end()){
                 find = false;
-                printf("<%d %d> does not exist! hash=%zu, turn=%d, depth=%d\n", ply, depth, zobrist_hash, turn, depth);
+                printf("<%d %d> does not exist! hash=%llu, turn=%d, depth=%d\n", ply, depth, zobrist_hash, turn, depth);
                 tp* hashnode = NULL;
                 ProbeHash(depth, 0, 0, false, &hashnode);
                 if(hashnode){

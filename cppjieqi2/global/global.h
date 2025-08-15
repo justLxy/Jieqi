@@ -13,7 +13,7 @@
 #include <type_traits>
 
 namespace board{
-   struct Thinker;
+   class Thinker;
 }
 
 //GetWithDef: If K does not exist, return the default value!
