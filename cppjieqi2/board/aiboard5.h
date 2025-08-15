@@ -106,6 +106,7 @@ public:
     std::unordered_map<std::pair<uint32_t, int>, std::pair<short, short>, myhash<uint32_t, int>>* tp_score;
     std::unordered_map<std::string, bool>* hist;
     std::unordered_map<std::string, std::pair<unsigned char, unsigned char>> kaijuku;
+    std::unordered_map<uint32_t, int> zobrist_repetition_counts;
     AIBoard5() noexcept;
     AIBoard5(const char another_state[MAX], bool turn, int round, const unsigned char di[VERSION_MAX][2][123], short score, std::unordered_map<std::string, bool>* hist) noexcept;
     AIBoard5(const AIBoard5& another_board) = delete;

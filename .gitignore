@@ -5,3 +5,12 @@ __pycache__
 */__pycache__
 test*
 log/
+
+# Build artifacts
+**/build/
+*.so
+*.dll
+*.dylib
+*.a
+*.lib
+*.out

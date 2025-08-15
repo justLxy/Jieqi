@@ -116,6 +116,8 @@ void board::AIBoard5::Reset() noexcept {
     _initialize_zobrist();
     zobrist_cache.clear();
     zobrist_cache.insert((zobrist_hash << 1)|original_turn);
+    zobrist_repetition_counts.clear();
+    zobrist_repetition_counts[zobrist_hash]++;
 }
 
 board::AIBoard5::AIBoard5(const char another_state[MAX], bool turn, int round, const unsigned char di[VERSION_MAX][2][123], short score, std::unordered_map<std::string, bool>* hist) noexcept:
@@ -295,6 +297,7 @@ bool board::AIBoard5::Move(const unsigned char encode_from, const unsigned char 
         zobrist_cache.insert(zobrist_turn);
         Scan();
     }
+    zobrist_repetition_counts[zobrist_hash]++;
     lastinsert = retval;
     return retval;
 }
@@ -304,6 +307,7 @@ void board::AIBoard5::NULLMove(){
     zobrist_cache.insert((zobrist_hash << 1)|turn);
     score = -score;
     score_cache.push(score);
+    zobrist_repetition_counts[zobrist_hash]++;
     Scan();
 }
 
@@ -313,6 +317,7 @@ void board::AIBoard5::UndoMove(int type){
     if(lastinsert){
         zobrist_cache.erase((zobrist_hash<<1)|turn);
     }
+    zobrist_repetition_counts[zobrist_hash]--;
     if(type == 1){//非空移动
         const std::tuple<unsigned char, unsigned char, char> from_to_eat = cache.top();
         cache.pop();
@@ -360,6 +365,7 @@ void board::AIBoard5::UndoMove(int type){
     }else if(type == 0){
         turn = !turn;
     }
+    zobrist_repetition_counts[zobrist_hash]--;
 }
 
 void board::AIBoard5::Scan(){
@@ -1310,6 +1316,16 @@ short mtd_alphabeta5(board::AIBoard5* self, const short gamma, int depth, const 
         for(int j = 0; j < num_of_legal_moves_tmp; ++j){
             auto move_score_tuple = legal_moves_tmp[j];
             auto src = std::get<1>(move_score_tuple), dst = std::get<2>(move_score_tuple);
+
+            if (self->Ismate_After_Move(src, dst)) {
+                self->Move(src, dst, 0); // Temporarily make the move to get the zobrist hash
+                uint32_t next_zobrist_hash = self->zobrist_hash;
+                self->UndoMove(1); // Undo the temporary move
+                if (self->zobrist_repetition_counts.count(next_zobrist_hash) && self->zobrist_repetition_counts[next_zobrist_hash] >= 2) {
+                    continue; // Skip this move as it leads to a perpetual check
+                }
+            }
+
             bool retval = self -> Move(src, dst, std::get<0>(move_score_tuple));
             if(retval){
                 score = -mtd_alphabeta5(self, 1 - gamma, depth - 1, false, nullmove, nullmove, quiesc_depth, traverse_all_strategy);
