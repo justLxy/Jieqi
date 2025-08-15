@@ -276,8 +276,8 @@ public:
 
     std::stack<gameinfo> score_cache;
     std::unordered_set<uint64_t> zobrist_cache;
-    tp* tptable;
-    std::unordered_map<std::string, bool>* hist;
+    tp* tptable; //
+    std::unordered_map<std::string, bool>* hist; //
     std::unordered_map<std::string, std::pair<unsigned char, unsigned char>> kaijuku;
     std::unordered_map<std::pair<uint64_t, int>, debugtuple, myhash<uint64_t, int>> moves;
     std::unordered_map<uint64_t, std::unordered_set<std::string>> banned;
@@ -419,7 +419,7 @@ public:
 
     std::function<uint64_t(void)> randU64 = []() -> uint64_t{
 	   //BUG: 在Windows上每次生成同样的随机数
-       std::mt19937_64 gen(std::random_device{}());
+       std::mt19937_64 gen(std::chrono::high_resolution_clock::now().time_since_epoch().count());
        uint64_t randomNumber = gen();
        return randomNumber;
     };
@@ -427,7 +427,7 @@ public:
     template<typename T>
     inline T div(T x, T y){
         if(std::is_floating_point<T>::value){
-            return fabs(y) < 1e-7 ? (x/y) : 0.0;
+            return fabs(y) < 1e-7 ? 0.0 : (x/y);
         }
         return y != 0 ? (x / y) : 0;
     }
@@ -446,10 +446,9 @@ public:
                 phashe -> alphadepth = depth;
                 phashe -> alphaval = val;
             }
-            if((hashf & hashfBETA) != 0 && (phashe -> betadepth <= depth || phashe -> betadepth <= val) && \
-                (originnull || movenotnull)){
-                    phashe -> betadepth = depth;
-                    phashe -> betaval = val;
+            if ((hashf & hashfBETA) != 0 && (phashe->betadepth <= depth) && (originnull || movenotnull)) {
+                phashe->betadepth = depth;
+                phashe->betaval = val;
             }
             if(movenotnull){
                 phashe -> src = src;

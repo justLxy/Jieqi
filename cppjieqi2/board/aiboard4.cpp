@@ -83,8 +83,8 @@ board::AIBoard4::AIBoard4(const char another_state[MAX], bool turn, int round, c
     SetScoreFunction("complicated_kongtoupao_score_function4", 1);
     memset(state_red, 0, sizeof(state_red));
     memset(state_black, 0, sizeof(state_black));
-    strncpy(state_red, another_state, _chess_board_size);
-    strncpy(state_black, another_state, _chess_board_size);
+    memcpy(state_red, another_state, _chess_board_size);
+    memcpy(state_black, another_state, _chess_board_size);
     if(turn){
         rotate(state_black);
     }else{
@@ -219,8 +219,8 @@ bool board::AIBoard4::Move(const unsigned char encode_from, const unsigned char 
             case 'r': --che_opponent; break;
             case 'p': --zu_opponent; break;
         }
-        zobrist_hash ^= zobrist[(int)state_red[reverse_encode_to]][reverse_encode_to];
-        zobrist_hash ^= zobrist[(int)state_red[reverse_encode_from]][reverse_encode_from];
+        zobrist_hash ^= zobrist[(int)swapcase(state_black[encode_to])][reverse_encode_to];
+        zobrist_hash ^= zobrist[(int)swapcase(state_black[encode_from])][reverse_encode_from];
         if(state_black[encode_from] >= 'D' && state_black[encode_from] <= 'I'){
             state_black[encode_to] = 'U';
             state_red[reverse_encode_to] = 'u';
@@ -230,7 +230,7 @@ bool board::AIBoard4::Move(const unsigned char encode_from, const unsigned char 
         }
         state_black[encode_from] = '.';
         state_red[reverse_encode_from] = '.';
-        zobrist_hash ^= zobrist[(int)state_red[reverse_encode_to]][reverse_encode_to];
+        zobrist_hash ^= zobrist[(int)swapcase(state_black[encode_to])][reverse_encode_to];
     }
     turn = !turn;
     std::swap(che, che_opponent);
@@ -704,9 +704,7 @@ bool board::AIBoard4::Ismate_After_Move(unsigned char src, unsigned char dst){
     int num_of_legal_moves_tmp = 0;
     bool killer_is_alive = false;
     Move(src, dst, 0);
-    turn = !turn;
     bool mate = GenMovesWithScore<false>(legal_moves_tmp, num_of_legal_moves_tmp, NULL, score, mate_src, mate_dst, killer_is_alive);
-    turn = !turn;
     UndoMove(1);
     return mate;
 }
