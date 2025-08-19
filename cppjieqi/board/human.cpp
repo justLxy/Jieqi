@@ -12,7 +12,8 @@ board::Human::~Human(){
 
 }
 
-std::string board::Human::Think(){
+std::string board::Human::Think(int maxdepth){
+	do { (void)(maxdepth); } while (0);
 	std::string think_result;
 	if(turn){
         printf("第%d轮, 红方行棋: \n", round);

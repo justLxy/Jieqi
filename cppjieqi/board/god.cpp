@@ -1,27 +1,5 @@
 #include "god.h"
 
-namespace board{
-    extern std::map<std::string, std::function<Thinker*(const char[], bool, int, const unsigned char [5][2][123], short, std::unordered_map<std::string, bool>*)>> bean;  //define in ../global/global.cpp
-
-    template<typename... Args>
-    Thinker* get(std::string x, Args... args){
-        if(bean.find(x) != bean.end()){
-            return bean[x](args...);
-        }
-        return NULL;
-    }
-
-    template<typename... Args>
-    Thinker* get_withprefix(std::string prefix, std::string x, Args... args){
-        return get(prefix + x, args...);
-    }
-
-    template<typename T, typename... Args>
-    typename std::enable_if<std::is_integral<T>::value || std::is_floating_point<T>::value, Thinker*>::type get_withprefix(std::string prefix, T x, Args... args){
-        return get(prefix + std::to_string(x), args...);
-    }
-}
-
 template<typename T>
 bool isT(std::string s, T* i){
     //用于判断字符串是否为整数/浮点型
@@ -39,6 +17,7 @@ bool isT(std::string s, T* i){
 
 
 God::God(const char* file): ok(true), redwin(0), blackwin(0), draw(0), file(file), logfile(""){
+    tptable = new (std::nothrow) tp[MAX_ZOBRIST];
     if(!file || (this -> file).size() == 0){
         ok = false;
         return;
@@ -98,9 +77,13 @@ God::God(const char* file): ok(true), redwin(0), blackwin(0), draw(0), file(file
 }
 
 God::~God(){
-   Singleton<board::Board>::deleteT();
-   if(thinker1) thinker1.reset();
-   if(thinker2) thinker2.reset();
+    if(tptable){
+       delete[] tptable;
+       tptable = NULL;
+    }
+    Singleton<board::Board>::deleteT();
+    if(thinker1) thinker1.reset();
+    if(thinker2) thinker2.reset();
 }
 
 int God::StartThinker(std::ofstream* of){
@@ -113,7 +96,7 @@ int God::StartThinker(std::ofstream* of){
             board_pointer -> PrintPos(board_pointer -> turn, true, false, true);
             thinker1.reset(new board::Human(board_pointer -> turn, board_pointer -> round));
         }else{
-            thinker1.reset(NEWRED(type1));
+            thinker1.reset(NEWRED);
         }
         if(!thinker1){
             printf("红空指针!\n");
@@ -122,7 +105,7 @@ int God::StartThinker(std::ofstream* of){
         thinker1 -> thinker_type = type1;
         thinker1 -> retry_num = thinker1 -> thinker_type?1:5;
         for(int i = 0; i < thinker1 -> retry_num; ++i){
-            std::string think_result = thinker1 -> Think(); // This function might cost a lot of time!
+            std::string think_result = thinker1 -> Think(8); // This function might cost a lot of time!
             std::string trim_think_result = trim(think_result);
             if(trim_think_result == "R" || trim_think_result == "r"){
                 return BLACK_WIN;
@@ -154,7 +137,7 @@ int God::StartThinker(std::ofstream* of){
             board_pointer -> PrintPos(board_pointer -> turn, true, false, true);
             thinker2.reset(new board::Human(board_pointer -> turn, board_pointer -> round));
         }else{
-            thinker2.reset(NEWBLACK(type2));
+            thinker2.reset(NEWBLACK);
         }
         if(!thinker2){
             printf("黑空指针!\n");
@@ -163,7 +146,7 @@ int God::StartThinker(std::ofstream* of){
         thinker2 -> thinker_type = type2;
         thinker2 -> retry_num = thinker2 -> thinker_type?1:5;
         for(int i = 0; i < thinker2 -> retry_num; ++i){
-            std::string think_result = thinker2 -> Think(); // This function might cost a lot of time!
+            std::string think_result = thinker2 -> Think(8); // This function might cost a lot of time!
             std::string trim_think_result = trim(think_result);
             if(trim_think_result == "R" || trim_think_result == "r"){
                 return RED_WIN;
@@ -289,8 +272,6 @@ void God::Play(){
 int God::StartGame(){
     red_eat_black.clear();
     black_eat_red.clear();
-    tp_move_bean.clear();
-    tp_score_bean.clear();
     bool write = false;
     std::ofstream of(logfile, std::ios::app);
     if(of.is_open()){

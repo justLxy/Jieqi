@@ -96,7 +96,7 @@ bool read_kaijuku(const char* kaijuku_file, std::unordered_map<std::string, std:
     }
     std::string line = "";
     std::string key = "";
-    int state = 0, counter = 0;
+    int state = 0;
     while(std::getline(instream, line)){
         std::string tmpline = subtrim(line);
         int len = tmpline.size();
@@ -130,7 +130,6 @@ bool read_kaijuku(const char* kaijuku_file, std::unordered_map<std::string, std:
             }
             kaijuku[std::string(key)] = {a, b};
             key = "";
-            ++counter;
         }
         state = (state + 1) % 2;
     }

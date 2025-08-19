@@ -1,4 +1,32 @@
 #include "aiboard5.h"
+#include <stdio.h>
+#include <ctype.h>
+#include "../global/global.h"
+#include "../score/score.h"
+
+
+namespace board {
+    // Helper function to convert the internal 256-char board representation
+    // to the 90-char web/history representation for consistent lookups.
+    std::string internal_to_web(const char* internal_board) {
+        std::string web_string;
+        web_string.reserve(90);
+        for (int r = 0; r < 10; ++r) {
+            for (int c = 0; c < 9; ++c) {
+                // This logic mirrors the web->internal conversion
+                int internal_pos = 195 - 16 * r + c;
+                web_string += internal_board[internal_pos];
+            }
+        }
+        return web_string;
+    }
+}
+
+
+#define TXY(x, y) (unsigned char)translate_x_y(x, y)
+#ifdef WIN32
+#define SV(vector) std::random_shuffle(vector.begin(), vector.end());
+#endif
 
 std::unordered_map<int, char> LUT5 = {
    {195, 'D'},
@@ -101,7 +129,7 @@ board::AIBoard5::AIBoard5() noexcept:
     memset(state_black, 0, sizeof(state_black));
     strncpy(state_red, _initial_state, _chess_board_size);
     strncpy(state_black, _initial_state, _chess_board_size);
-    copy_pst(this -> pst, ::pstglobal[4]);
+    copy_pst(this -> pst, ::pstglobal[3]);
     _initialize_dir();
     _initialize_zobrist();
     zobrist_cache.insert((zobrist_hash << 1)|original_turn);
@@ -111,15 +139,26 @@ board::AIBoard5::AIBoard5() noexcept:
     _has_initialized = true;
 }
 
+void board::AIBoard5::Reset() noexcept {
+    zobrist_hash = 0;
+    _initialize_zobrist();
+    zobrist_cache.clear();
+    zobrist_cache.insert((zobrist_hash << 1)|original_turn);
+    zobrist_repetition_counts.clear();
+    zobrist_repetition_counts[zobrist_hash]++;
+}
 
-board::AIBoard5::AIBoard5(const char another_state[MAX], bool turn, int round, const unsigned char di[VERSION_MAX][2][123], short score, std::unordered_map<std::string, bool>* hist) noexcept: 
+board::AIBoard5::AIBoard5(const char another_state[MAX], bool turn, int round, const unsigned char di[VERSION_MAX][2][123], short score, std::unordered_map<std::string, bool>* hist) noexcept:
                                                                                                                             lastinsert(false),
-                                                                                                                            version(0), 
-                                                                                                                            round(round), 
-                                                                                                                            turn(turn), 
+                                                                                                                            version(0),
+                                                                                                                            round(round),
+                                                                                                                            turn(turn),
                                                                                                                             original_turn(turn),
-                                                                                                                            zobrist_hash(0), 
+                                                                                                                            original_depth(0),
+                                                                                                                            zobrist_hash(0),
                                                                                                                             score(score),
+                                                                                                                            tp_move(&tp_move_bean[0]),
+                                                                                                                            tp_score(&tp_score_bean[0]),
                                                                                                                             hist(hist),
                                                                                                                             _kaijuku_file("../kaijuku"),
                                                                                                                             _myname("AI5"),
@@ -141,7 +180,7 @@ board::AIBoard5::AIBoard5(const char another_state[MAX], bool turn, int round, c
     }else{
         rotate(state_red);
     }
-    copy_pst(this -> pst, ::pstglobal[4]);
+    copy_pst(this -> pst, ::pstglobal[3]);
     CopyData(di);
     _initialize_dir();
     _initialize_zobrist();
@@ -286,6 +325,7 @@ bool board::AIBoard5::Move(const unsigned char encode_from, const unsigned char 
         zobrist_cache.insert(zobrist_turn);
         Scan();
     }
+    zobrist_repetition_counts[zobrist_hash]++;
     lastinsert = retval;
     return retval;
 }
@@ -295,6 +335,7 @@ void board::AIBoard5::NULLMove(){
     zobrist_cache.insert((zobrist_hash << 1)|turn);
     score = -score;
     score_cache.push(score);
+    zobrist_repetition_counts[zobrist_hash]++;
     Scan();
 }
 
@@ -304,6 +345,7 @@ void board::AIBoard5::UndoMove(int type){
     if(lastinsert){
         zobrist_cache.erase((zobrist_hash<<1)|turn);
     }
+    zobrist_repetition_counts[zobrist_hash]--;
     if(type == 1){//非空移动
         const std::tuple<unsigned char, unsigned char, char> from_to_eat = cache.top();
         cache.pop();
@@ -351,6 +393,7 @@ void board::AIBoard5::UndoMove(int type){
     }else if(type == 0){
         turn = !turn;
     }
+    zobrist_repetition_counts[zobrist_hash]--;
 }
 
 void board::AIBoard5::Scan(){
@@ -822,7 +865,8 @@ std::string board::AIBoard5::Kaiju(){
     return "";
 }
 
-std::string board::AIBoard5::Think(){
+std::string board::AIBoard5::Think(int maxdepth){
+    (void)maxdepth; // Ignore the depth from python
     SetScoreFunction("mtd_thinker5", 2);
     return round == 0 ? Kaiju() : _thinker_func(this);
 }
@@ -1111,10 +1155,10 @@ std::string mtd_thinker5(board::AIBoard5* bp){
     bp -> Scan();
     bool traverse_all_strategy = true;
     int max_depth = (bp -> round < 15?6:7);
-    int quiesc_depth = (bp -> round < 15?1:0);
+    int quiesc_depth = (bp -> round < 15?2:1);
     int depth = 0;
     auto start = std::chrono::high_resolution_clock::now();
-    for(depth = 5; depth <= max_depth; ++depth){
+    for(depth = 6; depth <= max_depth; ++depth){
         short lower = -MATE_UPPER, upper = MATE_UPPER;
         while(lower < upper - EVAL_ROBUSTNESS){
             short gamma = (lower + upper + 1)/2; //不会溢出
@@ -1124,7 +1168,7 @@ std::string mtd_thinker5(board::AIBoard5* bp){
         }
         mtd_alphabeta5(bp, lower, depth + quiesc_depth, true, true, true, quiesc_depth, traverse_all_strategy);
         size_t int_ms = (size_t)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
-        if(int_ms > 50000 || depth == max_depth){
+        if(int_ms > 20000 || depth == max_depth){
             auto move = (*bp -> tp_move)[{bp -> zobrist_hash, bp -> turn}];
             if(move == std::pair<unsigned char, unsigned char>({0, 0})){
                 unsigned char mate_src = 0, mate_dst = 0;
@@ -1133,12 +1177,12 @@ std::string mtd_thinker5(board::AIBoard5* bp){
                 bool killer_is_alive = false;
                 short killer_score = 0;
                 bp -> GenMovesWithScore<true, false>(legal_moves_tmp, num_of_legal_moves_tmp, NULL, killer_score, mate_src, mate_dst, killer_is_alive);
-                std::cout << "My name: " << bp -> GetName() << " [AM I FAILED?]" << num_of_legal_moves_tmp << " My move: " << bp -> translate_ucci(std::get<1>(legal_moves_tmp[0]), std::get<2>(legal_moves_tmp[0])) << ", duration = " << int_ms << ", depth = " << depth + quiesc_depth << "." << std::endl;
+                std::cout << "My name: " << bp -> GetName() << " [AM I FAILED?]" << num_of_legal_moves_tmp << " My move: " << bp -> translate_ucci(std::get<1>(legal_moves_tmp[0]), std::get<2>(legal_moves_tmp[0])) << ", duration = " << int_ms << ", depth = " << depth << ", quiesc_depth = " << quiesc_depth << "." << std::endl;
                 if(num_of_legal_moves_tmp != 0){
                     return bp -> translate_ucci(std::get<1>(legal_moves_tmp[0]), std::get<2>(legal_moves_tmp[0]));
                 }
             }
-            std::cout << "My name: " << bp -> GetName() << " My move: " << bp -> translate_ucci(move.first, move.second) << ", duration = " << int_ms << ", depth = " << depth + quiesc_depth << "." << std::endl;
+            std::cout << "My name: " << bp -> GetName() << " My move: " << bp -> translate_ucci(move.first, move.second) << ", duration = " << int_ms << ", depth = " << depth << ", quiesc_depth = " << quiesc_depth << "." << std::endl;
             return bp -> translate_ucci(move.first, move.second);
         }
     }
@@ -1227,11 +1271,12 @@ short mtd_alphabeta5(board::AIBoard5* self, const short gamma, int depth, const 
         self -> Scan();
         self -> original_depth = depth;
     }
-    if(!root && self -> hist -> find(self -> state_red) != self -> hist -> end()){
-        //假设AI执红。校验对象红方(self->original_turn)
-        //红方走了一步, 形成局面A, self -> hist[self -> state_red] == false(因为现在是黑方)
-        //如果和当前局面重复(当前局面为!self -> original_turn), 且turn也相同, 直接判断黑方胜利
-        return MATE_UPPER;
+    if(!root){
+        std::string web_board_str = board::internal_to_web(self->state_red);
+        if(self -> hist -> find(web_board_str) != self -> hist -> end()){
+            // Repetition detected. This is a draw.
+            return 0;
+        }
     }
     std::tuple<short, unsigned char, unsigned char> legal_moves_tmp[MAX_POSSIBLE_MOVES];
     int num_of_legal_moves_tmp = 0;
@@ -1300,6 +1345,18 @@ short mtd_alphabeta5(board::AIBoard5* self, const short gamma, int depth, const 
         for(int j = 0; j < num_of_legal_moves_tmp; ++j){
             auto move_score_tuple = legal_moves_tmp[j];
             auto src = std::get<1>(move_score_tuple), dst = std::get<2>(move_score_tuple);
+
+            /*
+            if (self->Ismate_After_Move(src, dst)) {
+                self->Move(src, dst, 0); // Temporarily make the move to get the zobrist hash
+                uint32_t next_zobrist_hash = self->zobrist_hash;
+                self->UndoMove(1); // Undo the temporary move
+                if (self->zobrist_repetition_counts.count(next_zobrist_hash) && self->zobrist_repetition_counts[next_zobrist_hash] >= 2) {
+                    continue; // Skip this move as it leads to a perpetual check
+                }
+            }
+            */
+
             bool retval = self -> Move(src, dst, std::get<0>(move_score_tuple));
             if(retval){
                 score = -mtd_alphabeta5(self, 1 - gamma, depth - 1, false, nullmove, nullmove, quiesc_depth, traverse_all_strategy);

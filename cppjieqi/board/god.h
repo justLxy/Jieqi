@@ -13,6 +13,7 @@
 #include "human.h"
 #include "../global/global.h"
 #include "../score/score.h"
+#include "../board/aiboard4.h"
 
 
 #define INVALID -1
@@ -22,10 +23,9 @@
 #define WASTE 3
 #define DRAW 4
 #define MAX_ROUNDS 200
-#define NEWRED(X) board::get_withprefix("AIBoard", X, board_pointer -> state_red, board_pointer -> turn, board_pointer -> round, board_pointer -> di_red, 0, &board_pointer -> hist)
-#define NEWBLACK(X) board::get_withprefix("AIBoard", X, board_pointer -> state_black, board_pointer -> turn, board_pointer -> round, board_pointer -> di_black, 0, &board_pointer -> hist)
-extern std::unordered_map<int, std::unordered_map<std::pair<uint32_t, bool>, std::pair<unsigned char, unsigned char>, myhash<uint32_t, bool>>> tp_move_bean;
-extern std::unordered_map<int, std::unordered_map<std::pair<uint32_t, int>, std::pair<short, short>, myhash<uint32_t, int>>> tp_score_bean;
+
+#define NEWRED new board::AIBoard4(board_pointer -> state_red, board_pointer -> turn, board_pointer -> round, board_pointer -> di_red, 0, tptable, &board_pointer -> hist)
+#define NEWBLACK new board::AIBoard4(board_pointer -> state_black, board_pointer -> turn, board_pointer -> round, board_pointer -> di_black, 0, tptable, &board_pointer -> hist)
 
 struct God{
     char eat = '.';
@@ -36,6 +36,7 @@ struct God{
     size_t redwin = 0;
     size_t blackwin = 0;
     size_t draw = 0;
+    tp* tptable;
     std::string file;
     std::string logfile;
     std::vector<std::tuple<char, int, int, char>> red_eat_black;

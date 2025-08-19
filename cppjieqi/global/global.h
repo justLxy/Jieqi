@@ -13,7 +13,7 @@
 #include <type_traits>
 
 namespace board{
-   struct Thinker;
+   class Thinker;
 }
 
 //GetWithDef: If K does not exist, return the default value!
@@ -138,6 +138,19 @@ struct InfoDict{
       dst_y = another.dst_y;
    }
    ~InfoDict()=default;
+};
+
+struct tp{
+   uint64_t key;
+   bool turn;
+   int alphadepth;
+   int betadepth;
+   short alphaval;
+   short betaval;
+   short score;
+   unsigned char src;
+   unsigned char dst;
+   int recordplace;
 };
 
 #endif

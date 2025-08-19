@@ -13,7 +13,7 @@ namespace board{
         Human();
         Human(bool turn, int round);
         virtual ~Human();
-        virtual std::string Think();
+        virtual std::string Think(int maxdepth);
     };
 }
 #endif

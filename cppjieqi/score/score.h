@@ -36,7 +36,7 @@ numb += di[VERSION][0][INTr]; numb += di[VERSION][0][INTn];  numb += di[VERSION]
 sumall[VERSION][1] = numr; sumall[VERSION][0] = numb;
 
 const std::string MINGZI = "RNBAKCP";
-bool read_score_table(const char* score_file, short pst[][256]);
+bool read_score_table(const char* score_file, short pst[123][256]);
 void copy_pst(short dst[][256], short src[][256]);
 bool read_kaijuku(const char* kaijuku_file, std::unordered_map<std::string, std::pair<unsigned char, unsigned char>>& kaijuku);
 void IntializeL1();

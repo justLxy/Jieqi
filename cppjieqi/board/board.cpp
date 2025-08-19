@@ -3,26 +3,6 @@
 
 const int board::Board::_chess_board_size = CHESS_BOARD_SIZE;
 
-#if 0
-const char board::Board::_initial_state[MAX] = 
-                    "                "
-                    "                "
-                    "                "
-                    "   .........    "
-                    "   .........    "
-                    "   .........    "
-                    "   .........    "
-                    "   .........    "
-                    "   .........    "
-                    "   .........    "
-                    "   .........    "
-                    "   .........    "
-                    "   .........    "
-                    "                "
-                    "                "
-                    "                ";
-#endif
-
 #if !DEBUG
 const char board::Board::_initial_state[MAX] = 
                     "                "
@@ -42,23 +22,26 @@ const char board::Board::_initial_state[MAX] =
                     "                "
                     "                ";
 #else
+
 const char board::Board::_initial_state[MAX] = 
                     "                "
                     "                "
                     "                "
-                    "   d.f......    "
-                    "   ....k..R.    "
-                    "   .........    "
-                    "   i.i.cA...    "
+                    "   .....k...    "
                     "   .........    "
                     "   .........    "
-                    "   I.b......    "
-                    "   ..NAK....    "
-                    "   ........r    "
-                    "   D.FG.....    "
+                    "   .....r...    "
+                    "   .........    "
+                    "   .........    "
+                    "   ..C.R....    "
+                    "   .........    "
+                    "   .........    "
+                    "   ....K....    "
                     "                "
                     "                "
                     "                ";
+
+
 #endif
 
 const std::unordered_map<std::string, std::string> board::Board::uni_pieces = {

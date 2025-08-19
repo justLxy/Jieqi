@@ -17,6 +17,7 @@ import math
 # 导入新的 C++ AI 引擎
 try:
     import cppjieqi
+    print(f"Loaded cppjieqi module from: {cppjieqi.__file__}") # 打印模块路径
     AI_AVAILABLE = True
     print("C++ AI engine loaded successfully")
 except ImportError as e:
@@ -96,10 +97,20 @@ class WebJieqiAI:
             # 2. 确定当前是否为红方回合
             is_red_turn = current_player == 'red'
             
-            # 3. 设置C++引擎的棋盘状态
-            cppjieqi.set_board(self.game_id, board_str, is_red_turn, len(history))
+            # 3. 将前端传来的历史记录（对象列表）转换为C++引擎需要的棋盘字符串列表
+            history_board_strings = []
+            if history and isinstance(history[0], dict):
+                for move_obj in history:
+                    if 'boardStateAfter' in move_obj:
+                        board_state_2d = move_obj['boardStateAfter']
+                        history_board_strings.append("".join(["".join(row) for row in board_state_2d]))
+            else:
+                history_board_strings = history # 假设已经是字符串列表
 
-            # 4. 调用C++ AI引擎获取最佳走法 (UCCI格式)
+            # 4. 设置C++引擎的棋盘状态
+            cppjieqi.set_board(self.game_id, board_str, is_red_turn, history_board_strings)
+
+            # 5. 调用C++ AI引擎获取最佳走法 (UCCI格式)
             ai_move_ucci = cppjieqi.get_ai_move(self.game_id, depth)
             
             search_time = time.time() - start_time
@@ -120,6 +131,10 @@ class WebJieqiAI:
                     'error': f'Failed to parse AI move: {ai_move_ucci}'
                 }
             
+            # 计算与C++一致的 quiesc_depth（round<15 -> 2，否则 1）
+            round_num = len(history_board_strings) // 2
+            quiesc_depth = 2 if round_num < 15 else 1
+            
             # 5. 组装返回给前端的数据
             from_piece = web_board[web_move['from']['row']][web_move['from']['col']]
             to_piece = web_board[web_move['to']['row']][web_move['to']['col']]
@@ -136,7 +151,7 @@ class WebJieqiAI:
                 'score': 0,
                 'depth': depth,
                 'search_time': round(search_time, 3),
-                'details': [f"C++ AI recommended move: {ai_move_ucci} at depth {depth}"]
+                'details': [f"C++ AI recommended move: {ai_move_ucci} (depth={depth}, quiesc_depth={quiesc_depth})"]
             }
             
         except Exception as e:
@@ -190,8 +205,18 @@ class WebJieqiAI:
             board_str = "".join(["".join(row) for row in web_board])
             is_red_turn = current_player == 'red'
             
+            # 将历史记录转换为棋盘字符串列表
+            history_board_strings = []
+            if history and isinstance(history[0], dict):
+                for move_obj in history:
+                    if 'boardStateAfter' in move_obj:
+                        board_state_2d = move_obj['boardStateAfter']
+                        history_board_strings.append("".join(["".join(row) for row in board_state_2d]))
+            else:
+                history_board_strings = history
+
             # 设置C++引擎的棋盘状态
-            cppjieqi.set_board(self.game_id, board_str, is_red_turn, len(history))
+            cppjieqi.set_board(self.game_id, board_str, is_red_turn, history_board_strings)
 
             # C++引擎返回相对于当前玩家的分数
             score_relative = cppjieqi.get_board_evaluation(self.game_id)
@@ -344,9 +369,19 @@ def win_probability():
         # 计算红方视角评分
         board_str = "".join(["".join(row) for row in web_board])
         is_red_turn = current_player == 'red'
+
+        # 将历史记录转换为棋盘字符串列表
+        history_board_strings = []
+        if history and isinstance(history[0], dict):
+            for move_obj in history:
+                if 'boardStateAfter' in move_obj:
+                    board_state_2d = move_obj['boardStateAfter']
+                    history_board_strings.append("".join(["".join(row) for row in board_state_2d]))
+        else:
+            history_board_strings = history
         
         # Set the board state in the C++ engine first
-        cppjieqi.set_board(ai_engine.game_id, board_str, is_red_turn, len(history))
+        cppjieqi.set_board(ai_engine.game_id, board_str, is_red_turn, history_board_strings)
         
         # Now get the evaluation
         score_relative = cppjieqi.get_board_evaluation(ai_engine.game_id)
