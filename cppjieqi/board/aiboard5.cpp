@@ -1154,11 +1154,11 @@ std::string mtd_thinker5(board::AIBoard5* bp){
     constexpr short EVAL_ROBUSTNESS = 0;
     bp -> Scan();
     bool traverse_all_strategy = true;
-    int max_depth = (bp -> round < 15?6:7);
-    int quiesc_depth = (bp -> round < 15?2:1);
+    int max_depth = (bp -> round < 15?7:7);
+    int quiesc_depth = (bp -> round < 15?1:2);
     int depth = 0;
     auto start = std::chrono::high_resolution_clock::now();
-    for(depth = 6; depth <= max_depth; ++depth){
+    for(depth = 5; depth <= max_depth; ++depth){
         short lower = -MATE_UPPER, upper = MATE_UPPER;
         while(lower < upper - EVAL_ROBUSTNESS){
             short gamma = (lower + upper + 1)/2; //不会溢出
@@ -1168,9 +1168,26 @@ std::string mtd_thinker5(board::AIBoard5* bp){
         }
         mtd_alphabeta5(bp, lower, depth + quiesc_depth, true, true, true, quiesc_depth, traverse_all_strategy);
         size_t int_ms = (size_t)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
-        if(int_ms > 20000 || depth == max_depth){
+        if(int_ms > 15000 || depth == max_depth){
             auto move = (*bp -> tp_move)[{bp -> zobrist_hash, bp -> turn}];
-            if(move == std::pair<unsigned char, unsigned char>({0, 0})){
+            // Validate the move from transposition table
+            bool move_is_valid = false;
+            if(move != std::pair<unsigned char, unsigned char>({0, 0})){
+                // Check if this move is actually legal
+                std::tuple<short, unsigned char, unsigned char> legal_moves_check[MAX_POSSIBLE_MOVES];
+                int num_legal_check = 0;
+                unsigned char dummy_src = 0, dummy_dst = 0;
+                bool dummy_alive = false;
+                short dummy_score = 0;
+                bp -> GenMovesWithScore<true, false>(legal_moves_check, num_legal_check, NULL, dummy_score, dummy_src, dummy_dst, dummy_alive);
+                for(int i = 0; i < num_legal_check; ++i){
+                    if(std::get<1>(legal_moves_check[i]) == move.first && std::get<2>(legal_moves_check[i]) == move.second){
+                        move_is_valid = true;
+                        break;
+                    }
+                }
+            }
+            if(!move_is_valid){
                 unsigned char mate_src = 0, mate_dst = 0;
                 std::tuple<short, unsigned char, unsigned char> legal_moves_tmp[MAX_POSSIBLE_MOVES];
                 int num_of_legal_moves_tmp = 0;
@@ -1181,9 +1198,10 @@ std::string mtd_thinker5(board::AIBoard5* bp){
                 if(num_of_legal_moves_tmp != 0){
                     return bp -> translate_ucci(std::get<1>(legal_moves_tmp[0]), std::get<2>(legal_moves_tmp[0]));
                 }
+            } else {
+                std::cout << "My name: " << bp -> GetName() << " My move: " << bp -> translate_ucci(move.first, move.second) << ", duration = " << int_ms << ", depth = " << depth << ", quiesc_depth = " << quiesc_depth << "." << std::endl;
+                return bp -> translate_ucci(move.first, move.second);
             }
-            std::cout << "My name: " << bp -> GetName() << " My move: " << bp -> translate_ucci(move.first, move.second) << ", duration = " << int_ms << ", depth = " << depth << ", quiesc_depth = " << quiesc_depth << "." << std::endl;
-            return bp -> translate_ucci(move.first, move.second);
         }
     }
     return "";
